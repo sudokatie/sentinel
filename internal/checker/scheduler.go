@@ -24,6 +24,7 @@ type Scheduler struct {
 type SchedulerConfig struct {
 	ConsecutiveFailures int
 	RetentionDays       int
+	AggregatesDays      int
 }
 
 type scheduledCheck struct {
@@ -93,11 +94,33 @@ func (s *Scheduler) doCleanup() {
 		retentionDays = 7 // Default 7 days
 	}
 
-	cutoff := time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour)
-	if err := s.storage.CleanupOldResults(cutoff); err != nil {
+	aggregatesDays := s.config.AggregatesDays
+	if aggregatesDays < 1 {
+		aggregatesDays = 90 // Default 90 days
+	}
+
+	resultsCutoff := time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour)
+	aggregatesCutoff := time.Now().Add(-time.Duration(aggregatesDays) * 24 * time.Hour)
+
+	// First, aggregate results that are about to be deleted
+	if err := s.storage.AggregateResults(resultsCutoff); err != nil {
+		fmt.Printf("aggregation error: %v\n", err)
+	} else {
+		fmt.Printf("Aggregated results older than %d days into hourly summaries\n", retentionDays)
+	}
+
+	// Then delete the old results
+	if err := s.storage.CleanupOldResults(resultsCutoff); err != nil {
 		fmt.Printf("cleanup error: %v\n", err)
 	} else {
 		fmt.Printf("Cleaned up results older than %d days\n", retentionDays)
+	}
+
+	// Finally, clean up old aggregates
+	if err := s.storage.CleanupOldAggregates(aggregatesCutoff); err != nil {
+		fmt.Printf("aggregates cleanup error: %v\n", err)
+	} else {
+		fmt.Printf("Cleaned up aggregates older than %d days\n", aggregatesDays)
 	}
 }
 

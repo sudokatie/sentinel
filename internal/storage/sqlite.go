@@ -82,6 +82,22 @@ func (s *SQLiteStorage) Migrate() error {
 			error_message TEXT,
 			FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
 		)`,
+		`CREATE TABLE IF NOT EXISTS hourly_aggregates (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			check_id INTEGER NOT NULL,
+			hour DATETIME NOT NULL,
+			total_checks INTEGER NOT NULL,
+			success_count INTEGER NOT NULL,
+			failure_count INTEGER NOT NULL,
+			avg_response_ms INTEGER,
+			min_response_ms INTEGER,
+			max_response_ms INTEGER,
+			uptime_percent REAL,
+			FOREIGN KEY (check_id) REFERENCES checks(id) ON DELETE CASCADE,
+			UNIQUE(check_id, hour)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_hourly_aggregates_check_id ON hourly_aggregates(check_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_hourly_aggregates_hour ON hourly_aggregates(hour)`,
 	}
 
 	for _, m := range migrations {
@@ -600,12 +616,125 @@ func (s *SQLiteStorage) GetLastAlertForIncident(incidentID int64, channel string
 	return &log, nil
 }
 
+// Aggregates
+
+func (s *SQLiteStorage) CreateHourlyAggregate(agg *HourlyAggregate) error {
+	_, err := s.db.Exec(`
+		INSERT OR REPLACE INTO hourly_aggregates 
+		(check_id, hour, total_checks, success_count, failure_count, avg_response_ms, min_response_ms, max_response_ms, uptime_percent)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, agg.CheckID, agg.Hour, agg.TotalChecks, agg.SuccessCount, agg.FailureCount,
+		agg.AvgResponseMs, agg.MinResponseMs, agg.MaxResponseMs, agg.UptimePercent)
+	if err != nil {
+		return fmt.Errorf("creating hourly aggregate: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStorage) GetHourlyAggregates(checkID int64, start, end time.Time) ([]*HourlyAggregate, error) {
+	rows, err := s.db.Query(`
+		SELECT id, check_id, hour, total_checks, success_count, failure_count, 
+		       avg_response_ms, min_response_ms, max_response_ms, uptime_percent
+		FROM hourly_aggregates 
+		WHERE check_id = ? AND hour BETWEEN ? AND ?
+		ORDER BY hour
+	`, checkID, start, end)
+	if err != nil {
+		return nil, fmt.Errorf("querying hourly aggregates: %w", err)
+	}
+	defer rows.Close()
+
+	var aggregates []*HourlyAggregate
+	for rows.Next() {
+		var agg HourlyAggregate
+		err := rows.Scan(&agg.ID, &agg.CheckID, &agg.Hour, &agg.TotalChecks,
+			&agg.SuccessCount, &agg.FailureCount, &agg.AvgResponseMs,
+			&agg.MinResponseMs, &agg.MaxResponseMs, &agg.UptimePercent)
+		if err != nil {
+			return nil, fmt.Errorf("scanning hourly aggregate: %w", err)
+		}
+		aggregates = append(aggregates, &agg)
+	}
+	return aggregates, nil
+}
+
 // Maintenance
+
+func (s *SQLiteStorage) AggregateResults(olderThan time.Time) error {
+	// Get all checks
+	checks, err := s.ListChecks()
+	if err != nil {
+		return fmt.Errorf("listing checks for aggregation: %w", err)
+	}
+
+	for _, check := range checks {
+		// Find all hours with results older than the cutoff
+		rows, err := s.db.Query(`
+			SELECT 
+				strftime('%Y-%m-%d %H:00:00', checked_at) as hour,
+				COUNT(*) as total,
+				SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END) as success,
+				SUM(CASE WHEN status = 'down' THEN 1 ELSE 0 END) as failure,
+				AVG(CASE WHEN status = 'up' THEN response_time_ms END) as avg_ms,
+				MIN(CASE WHEN status = 'up' THEN response_time_ms END) as min_ms,
+				MAX(CASE WHEN status = 'up' THEN response_time_ms END) as max_ms
+			FROM check_results
+			WHERE check_id = ? AND checked_at < ?
+			GROUP BY strftime('%Y-%m-%d %H:00:00', checked_at)
+		`, check.ID, olderThan)
+		if err != nil {
+			continue
+		}
+
+		for rows.Next() {
+			var hourStr string
+			var total, success, failure int
+			var avgMs, minMs, maxMs *int
+
+			if err := rows.Scan(&hourStr, &total, &success, &failure, &avgMs, &minMs, &maxMs); err != nil {
+				continue
+			}
+
+			hour, _ := time.Parse("2006-01-02 15:04:05", hourStr)
+			
+			agg := &HourlyAggregate{
+				CheckID:       check.ID,
+				Hour:          hour,
+				TotalChecks:   total,
+				SuccessCount:  success,
+				FailureCount:  failure,
+				UptimePercent: float64(success) / float64(total) * 100,
+			}
+			if avgMs != nil {
+				agg.AvgResponseMs = *avgMs
+			}
+			if minMs != nil {
+				agg.MinResponseMs = *minMs
+			}
+			if maxMs != nil {
+				agg.MaxResponseMs = *maxMs
+			}
+
+			s.CreateHourlyAggregate(agg)
+		}
+		rows.Close()
+	}
+
+	return nil
+}
 
 func (s *SQLiteStorage) CleanupOldResults(olderThan time.Time) error {
 	_, err := s.db.Exec("DELETE FROM check_results WHERE checked_at < ?", olderThan)
 	if err != nil {
 		return fmt.Errorf("cleaning up old results: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStorage) CleanupOldAggregates(olderThan time.Time) error {
+	_, err := s.db.Exec("DELETE FROM hourly_aggregates WHERE hour < ?", olderThan)
+	if err != nil {
+		return fmt.Errorf("cleaning up old aggregates: %w", err)
 	}
 	return nil
 }

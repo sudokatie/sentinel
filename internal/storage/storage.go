@@ -35,7 +35,13 @@ type Storage interface {
 	LogAlert(log *AlertLog) error
 	GetLastAlertForIncident(incidentID int64, channel string) (*AlertLog, error)
 
+	// Aggregates
+	CreateHourlyAggregate(agg *HourlyAggregate) error
+	GetHourlyAggregates(checkID int64, start, end time.Time) ([]*HourlyAggregate, error)
+
 	// Maintenance
 	CleanupOldResults(olderThan time.Time) error
+	AggregateResults(olderThan time.Time) error
+	CleanupOldAggregates(olderThan time.Time) error
 	Close() error
 }

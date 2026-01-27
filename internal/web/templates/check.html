@@ -75,7 +75,14 @@
 
         {{if .Results}}
         <div class="chart-section">
-            <h2>Response Time</h2>
+            <div class="chart-header">
+                <h2>Response Time</h2>
+                <div class="period-selector">
+                    <a href="?period=24h" class="period-btn {{if eq .Period "24h"}}active{{end}}">24h</a>
+                    <a href="?period=7d" class="period-btn {{if eq .Period "7d"}}active{{end}}">7d</a>
+                    <a href="?period=30d" class="period-btn {{if eq .Period "30d"}}active{{end}}">30d</a>
+                </div>
+            </div>
             <canvas id="responseChart"></canvas>
         </div>
         <script>

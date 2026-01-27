@@ -140,6 +140,7 @@ func serve() {
 	sched := checker.NewScheduler(store, alertMgr, checker.SchedulerConfig{
 		ConsecutiveFailures: cfg.Alerts.ConsecutiveFailures,
 		RetentionDays:       cfg.Retention.ResultsDays,
+		AggregatesDays:      cfg.Retention.AggregatesDays,
 	})
 
 	// Start scheduler
@@ -149,7 +150,7 @@ func serve() {
 	}
 
 	// Initialize web server
-	server := web.NewServer(&cfg.Server, store, sched, cfg.Server.Users)
+	server := web.NewServer(&cfg.Server, cfg, store, sched, cfg.Server.Users)
 
 	// Handle shutdown
 	quit := make(chan os.Signal, 1)

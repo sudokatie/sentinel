@@ -103,6 +103,19 @@ type CheckStats struct {
 	AvgResponseMs30d int     `json:"avg_response_ms_30d"`
 }
 
+type HourlyAggregate struct {
+	ID            int64     `json:"id"`
+	CheckID       int64     `json:"check_id"`
+	Hour          time.Time `json:"hour"`
+	TotalChecks   int       `json:"total_checks"`
+	SuccessCount  int       `json:"success_count"`
+	FailureCount  int       `json:"failure_count"`
+	AvgResponseMs int       `json:"avg_response_ms"`
+	MinResponseMs int       `json:"min_response_ms"`
+	MaxResponseMs int       `json:"max_response_ms"`
+	UptimePercent float64   `json:"uptime_percent"`
+}
+
 // CreateCheckInput is used for creating new checks via API
 type CreateCheckInput struct {
 	Name           string   `json:"name"`

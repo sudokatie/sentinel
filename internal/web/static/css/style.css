@@ -436,13 +436,45 @@ footer {
     margin-bottom: 40px;
 }
 
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
 .chart-section h2 {
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 2px;
     color: var(--text-dim);
-    margin-bottom: 16px;
+    margin: 0;
+}
+
+.period-selector {
+    display: flex;
+    gap: 4px;
+}
+
+.period-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-dim);
+    background: var(--surface);
+    border-radius: 4px;
+    transition: all 0.15s;
+}
+
+.period-btn:hover {
+    color: var(--text);
+    background: var(--surface-hover);
+}
+
+.period-btn.active {
+    color: var(--bg);
+    background: var(--coral);
 }
 
 #responseChart {
@@ -471,6 +503,40 @@ footer {
     letter-spacing: 2px;
     color: var(--text-dim);
     margin-bottom: 20px;
+}
+
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.config-item {
+    background: var(--surface);
+    padding: 16px;
+    border-radius: 6px;
+}
+
+.config-item label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+}
+
+.config-item span {
+    font-size: 14px;
+    color: var(--text-bright);
+}
+
+.config-note {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
 }
 
 /* Alerts */

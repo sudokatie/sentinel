@@ -25,11 +25,12 @@ var templateFS embed.FS
 var staticFS embed.FS
 
 type Server struct {
-	echo      *echo.Echo
-	config    *config.ServerConfig
-	storage   storage.Storage
-	scheduler *checker.Scheduler
-	auth      *AuthManager
+	echo       *echo.Echo
+	config     *config.ServerConfig
+	fullConfig *config.Config
+	storage    storage.Storage
+	scheduler  *checker.Scheduler
+	auth       *AuthManager
 }
 
 type Template struct {
@@ -45,7 +46,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
-func NewServer(cfg *config.ServerConfig, store storage.Storage, sched *checker.Scheduler, users map[string]string) *Server {
+func NewServer(cfg *config.ServerConfig, fullCfg *config.Config, store storage.Storage, sched *checker.Scheduler, users map[string]string) *Server {
 	e := echo.New()
 	e.HideBanner = true
 
@@ -72,11 +73,12 @@ func NewServer(cfg *config.ServerConfig, store storage.Storage, sched *checker.S
 	}
 
 	server := &Server{
-		echo:      e,
-		config:    cfg,
-		storage:   store,
-		scheduler: sched,
-		auth:      auth,
+		echo:       e,
+		config:     cfg,
+		fullConfig: fullCfg,
+		storage:    store,
+		scheduler:  sched,
+		auth:       auth,
 	}
 
 	// Register routes

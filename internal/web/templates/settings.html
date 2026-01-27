@@ -48,6 +48,62 @@
                 </form>
             </section>
 
+            {{if .AlertConfig}}
+            <section>
+                <h2>Alert Configuration</h2>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <label>Consecutive Failures</label>
+                        <span>{{.AlertConfig.ConsecutiveFailures}}</span>
+                    </div>
+                    <div class="config-item">
+                        <label>Recovery Notifications</label>
+                        <span>{{if .AlertConfig.RecoveryNotification}}Enabled{{else}}Disabled{{end}}</span>
+                    </div>
+                    <div class="config-item">
+                        <label>Alert Cooldown</label>
+                        <span>{{.AlertConfig.CooldownMinutes}} minutes</span>
+                    </div>
+                    <div class="config-item">
+                        <label>Email Alerts</label>
+                        <span>{{if .AlertConfig.EmailEnabled}}Enabled{{else}}Disabled{{end}}</span>
+                    </div>
+                    {{if .AlertConfig.EmailEnabled}}
+                    <div class="config-item">
+                        <label>SMTP Host</label>
+                        <span>{{.AlertConfig.SMTPHost}}:{{.AlertConfig.SMTPPort}}</span>
+                    </div>
+                    <div class="config-item">
+                        <label>From Address</label>
+                        <span>{{.AlertConfig.FromAddress}}</span>
+                    </div>
+                    <div class="config-item">
+                        <label>Recipients</label>
+                        <span>{{range $i, $addr := .AlertConfig.ToAddresses}}{{if $i}}, {{end}}{{$addr}}{{end}}</span>
+                    </div>
+                    {{end}}
+                </div>
+                <p class="config-note">Edit sentinel.yaml to change alert settings</p>
+            </section>
+            {{end}}
+
+            {{if .RetentionConfig}}
+            <section>
+                <h2>Data Retention</h2>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <label>Keep Results</label>
+                        <span>{{.RetentionConfig.ResultsDays}} days</span>
+                    </div>
+                    <div class="config-item">
+                        <label>Keep Aggregates</label>
+                        <span>{{.RetentionConfig.AggregatesDays}} days</span>
+                    </div>
+                </div>
+                <p class="config-note">Edit sentinel.yaml to change retention settings</p>
+            </section>
+            {{end}}
+
             <section>
                 <h2>Existing Checks</h2>
                 {{if .Checks}}

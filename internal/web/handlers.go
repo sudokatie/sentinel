@@ -34,14 +34,33 @@ type CheckDetailData struct {
 	Stats     *storage.CheckStats
 	Results   []*storage.CheckResult
 	Incidents []*storage.Incident
+	Period    string // "24h", "7d", "30d"
 }
 
 type SettingsData struct {
-	Title    string
-	BasePath string
-	Checks   []*storage.Check
-	Message  string
-	Error    string
+	Title         string
+	BasePath      string
+	Checks        []*storage.Check
+	Message       string
+	Error         string
+	AlertConfig   *AlertConfigView
+	RetentionConfig *RetentionConfigView
+}
+
+type AlertConfigView struct {
+	ConsecutiveFailures  int
+	RecoveryNotification bool
+	CooldownMinutes      int
+	EmailEnabled         bool
+	SMTPHost             string
+	SMTPPort             int
+	FromAddress          string
+	ToAddresses          []string
+}
+
+type RetentionConfigView struct {
+	ResultsDays    int
+	AggregatesDays int
 }
 
 type EditCheckData struct {
@@ -151,13 +170,29 @@ func (s *Server) HandleCheckDetail(c echo.Context) error {
 	// Get stats
 	stats, _ := s.storage.GetStats(check.ID)
 
-	// Get results for chart (last 100)
-	results, _ := s.storage.GetResults(check.ID, 100, 0)
-
-	// Reverse results for chronological order
-	for i, j := 0, len(results)-1; i < j; i, j = i+1, j-1 {
-		results[i], results[j] = results[j], results[i]
+	// Get period from query param (default 24h)
+	period := c.QueryParam("period")
+	if period == "" {
+		period = "24h"
 	}
+
+	// Calculate time range based on period
+	var startTime time.Time
+	now := time.Now()
+	switch period {
+	case "7d":
+		startTime = now.Add(-7 * 24 * time.Hour)
+	case "30d":
+		startTime = now.Add(-30 * 24 * time.Hour)
+	default:
+		period = "24h"
+		startTime = now.Add(-24 * time.Hour)
+	}
+
+	// Get results for chart within time range
+	results, _ := s.storage.GetResultsInRange(check.ID, startTime, now)
+
+	// Results are already in chronological order from GetResultsInRange
 
 	// Get incidents
 	incidents, _ := s.storage.ListIncidentsForCheck(check.ID, 10)
@@ -169,6 +204,7 @@ func (s *Server) HandleCheckDetail(c echo.Context) error {
 		Stats:     stats,
 		Results:   results,
 		Incidents: incidents,
+		Period:    period,
 	}
 
 	return c.Render(http.StatusOK, "check.html", data)
@@ -185,12 +221,35 @@ func (s *Server) HandleSettings(c echo.Context) error {
 		return checks[i].Name < checks[j].Name
 	})
 
+	// Build alert config view
+	var alertConfig *AlertConfigView
+	var retentionConfig *RetentionConfigView
+
+	if s.fullConfig != nil {
+		alertConfig = &AlertConfigView{
+			ConsecutiveFailures:  s.fullConfig.Alerts.ConsecutiveFailures,
+			RecoveryNotification: s.fullConfig.Alerts.RecoveryNotification,
+			CooldownMinutes:      s.fullConfig.Alerts.CooldownMinutes,
+			EmailEnabled:         s.fullConfig.Alerts.Email.Enabled,
+			SMTPHost:             s.fullConfig.Alerts.Email.SMTPHost,
+			SMTPPort:             s.fullConfig.Alerts.Email.SMTPPort,
+			FromAddress:          s.fullConfig.Alerts.Email.FromAddress,
+			ToAddresses:          s.fullConfig.Alerts.Email.ToAddresses,
+		}
+		retentionConfig = &RetentionConfigView{
+			ResultsDays:    s.fullConfig.Retention.ResultsDays,
+			AggregatesDays: s.fullConfig.Retention.AggregatesDays,
+		}
+	}
+
 	data := SettingsData{
-		Title:    "Settings",
-		BasePath: s.BasePath(),
-		Checks:   checks,
-		Message:  c.QueryParam("message"),
-		Error:    c.QueryParam("error"),
+		Title:           "Settings",
+		BasePath:        s.BasePath(),
+		Checks:          checks,
+		Message:         c.QueryParam("message"),
+		Error:           c.QueryParam("error"),
+		AlertConfig:     alertConfig,
+		RetentionConfig: retentionConfig,
 	}
 
 	return c.Render(http.StatusOK, "settings.html", data)
