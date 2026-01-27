@@ -7,13 +7,18 @@ import (
 	"time"
 )
 
+// newTestChecker creates a checker with no retry delay for faster tests
+func newTestChecker() *HTTPChecker {
+	return NewHTTPCheckerWithRetry(0)
+}
+
 func TestHTTPCheckerSuccess(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
-	checker := NewHTTPChecker()
+	checker := newTestChecker()
 	resp := checker.Execute(&CheckRequest{
 		URL:            server.URL,
 		Timeout:        5 * time.Second,
@@ -56,7 +61,7 @@ func TestHTTPCheckerDifferentStatusCodes(t *testing.T) {
 			}))
 			defer server.Close()
 
-			checker := NewHTTPChecker()
+			checker := newTestChecker()
 			resp := checker.Execute(&CheckRequest{
 				URL:            server.URL,
 				Timeout:        5 * time.Second,
@@ -83,7 +88,7 @@ func TestHTTPCheckerTimeout(t *testing.T) {
 	}))
 	defer server.Close()
 
-	checker := NewHTTPChecker()
+	checker := newTestChecker()
 	resp := checker.Execute(&CheckRequest{
 		URL:            server.URL,
 		Timeout:        100 * time.Millisecond,
@@ -99,7 +104,7 @@ func TestHTTPCheckerTimeout(t *testing.T) {
 }
 
 func TestHTTPCheckerInvalidURL(t *testing.T) {
-	checker := NewHTTPChecker()
+	checker := newTestChecker()
 	resp := checker.Execute(&CheckRequest{
 		URL:            "not-a-valid-url",
 		Timeout:        5 * time.Second,
@@ -112,7 +117,7 @@ func TestHTTPCheckerInvalidURL(t *testing.T) {
 }
 
 func TestHTTPCheckerConnectionRefused(t *testing.T) {
-	checker := NewHTTPChecker()
+	checker := newTestChecker()
 	resp := checker.Execute(&CheckRequest{
 		URL:            "http://localhost:59999", // Unlikely to be in use
 		Timeout:        2 * time.Second,
@@ -136,7 +141,7 @@ func TestHTTPCheckerRedirects(t *testing.T) {
 	}))
 	defer server.Close()
 
-	checker := NewHTTPChecker()
+	checker := newTestChecker()
 	resp := checker.Execute(&CheckRequest{
 		URL:            server.URL,
 		Timeout:        5 * time.Second,
@@ -159,7 +164,7 @@ func TestHTTPCheckerResponseTime(t *testing.T) {
 	}))
 	defer server.Close()
 
-	checker := NewHTTPChecker()
+	checker := newTestChecker()
 	resp := checker.Execute(&CheckRequest{
 		URL:            server.URL,
 		Timeout:        5 * time.Second,
@@ -184,7 +189,7 @@ func TestHTTPCheckerUserAgent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	checker := NewHTTPChecker()
+	checker := newTestChecker()
 	checker.Execute(&CheckRequest{
 		URL:            server.URL,
 		Timeout:        5 * time.Second,
@@ -202,5 +207,85 @@ func TestIsSuccessDefaultStatus(t *testing.T) {
 	// expectedStatus=0 should default to 200
 	if !resp.IsSuccess(0) {
 		t.Error("expected IsSuccess(0) to return true for status 200")
+	}
+}
+
+func TestHTTPCheckerRetryOnFailure(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount == 1 {
+			// First call fails
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			// Second call succeeds
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	// Use short retry delay for testing
+	checker := NewHTTPCheckerWithRetry(10 * time.Millisecond)
+	resp := checker.Execute(&CheckRequest{
+		URL:            server.URL,
+		Timeout:        5 * time.Second,
+		ExpectedStatus: 200,
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %v", resp.Error)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected status 200 after retry, got %d", resp.StatusCode)
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 calls (initial + retry), got %d", callCount)
+	}
+}
+
+func TestHTTPCheckerNoRetryOnSuccess(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	checker := NewHTTPCheckerWithRetry(10 * time.Millisecond)
+	resp := checker.Execute(&CheckRequest{
+		URL:            server.URL,
+		Timeout:        5 * time.Second,
+		ExpectedStatus: 200,
+	})
+
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %v", resp.Error)
+	}
+	if callCount != 1 {
+		t.Errorf("expected only 1 call on success, got %d", callCount)
+	}
+}
+
+func TestHTTPCheckerNoRetryWhenDisabled(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	// RetryDelay of 0 disables retry
+	checker := NewHTTPCheckerWithRetry(0)
+	resp := checker.Execute(&CheckRequest{
+		URL:            server.URL,
+		Timeout:        5 * time.Second,
+		ExpectedStatus: 200,
+	})
+
+	if resp.StatusCode != 500 {
+		t.Errorf("expected status 500, got %d", resp.StatusCode)
+	}
+	if callCount != 1 {
+		t.Errorf("expected only 1 call when retry disabled, got %d", callCount)
 	}
 }

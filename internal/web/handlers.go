@@ -44,6 +44,13 @@ type SettingsData struct {
 	Error    string
 }
 
+type EditCheckData struct {
+	Title    string
+	BasePath string
+	Check    *storage.Check
+	Error    string
+}
+
 func (s *Server) HandleDashboard(c echo.Context) error {
 	checks, err := s.storage.ListChecks()
 	if err != nil {
@@ -243,4 +250,78 @@ func (s *Server) HandleDeleteCheckForm(c echo.Context) error {
 	}
 
 	return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?message=Check+deleted")
+}
+
+func (s *Server) HandleEditCheckForm(c echo.Context) error {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?error=Invalid+check+ID")
+	}
+
+	check, err := s.storage.GetCheck(id)
+	if err != nil || check == nil {
+		return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?error=Check+not+found")
+	}
+
+	// Handle GET - show edit form
+	if c.Request().Method == "GET" {
+		data := EditCheckData{
+			Title:    "Edit Check",
+			BasePath: s.BasePath(),
+			Check:    check,
+		}
+		return c.Render(http.StatusOK, "edit.html", data)
+	}
+
+	// Handle POST - process form
+	check.Name = c.FormValue("name")
+	check.URL = c.FormValue("url")
+
+	if intervalStr := c.FormValue("interval"); intervalStr != "" {
+		if i, err := strconv.Atoi(intervalStr); err == nil && i > 0 {
+			check.IntervalSecs = i
+		}
+	}
+
+	if timeoutStr := c.FormValue("timeout"); timeoutStr != "" {
+		if t, err := strconv.Atoi(timeoutStr); err == nil && t > 0 {
+			check.TimeoutSecs = t
+		}
+	}
+
+	if statusStr := c.FormValue("expected_status"); statusStr != "" {
+		if s, err := strconv.Atoi(statusStr); err == nil && s > 0 {
+			check.ExpectedStatus = s
+		}
+	}
+
+	check.Enabled = c.FormValue("enabled") == "1"
+
+	if check.Name == "" || check.URL == "" {
+		data := EditCheckData{
+			Title:    "Edit Check",
+			BasePath: s.BasePath(),
+			Check:    check,
+			Error:    "Name and URL are required",
+		}
+		return c.Render(http.StatusOK, "edit.html", data)
+	}
+
+	if err := s.storage.UpdateCheck(check); err != nil {
+		data := EditCheckData{
+			Title:    "Edit Check",
+			BasePath: s.BasePath(),
+			Check:    check,
+			Error:    "Failed to update check",
+		}
+		return c.Render(http.StatusOK, "edit.html", data)
+	}
+
+	// Update scheduler
+	if s.scheduler != nil {
+		s.scheduler.UpdateCheck(check)
+	}
+
+	return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?message=Check+updated")
 }

@@ -8,7 +8,8 @@ import (
 )
 
 type HTTPChecker struct {
-	client *http.Client
+	client     *http.Client
+	RetryDelay time.Duration
 }
 
 type CheckRequest struct {
@@ -24,6 +25,10 @@ type CheckResponse struct {
 }
 
 func NewHTTPChecker() *HTTPChecker {
+	return NewHTTPCheckerWithRetry(5 * time.Second)
+}
+
+func NewHTTPCheckerWithRetry(retryDelay time.Duration) *HTTPChecker {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			MinVersion: tls.VersionTLS12,
@@ -43,10 +48,22 @@ func NewHTTPChecker() *HTTPChecker {
 		},
 	}
 
-	return &HTTPChecker{client: client}
+	return &HTTPChecker{client: client, RetryDelay: retryDelay}
 }
 
 func (h *HTTPChecker) Execute(req *CheckRequest) *CheckResponse {
+	response := h.doRequest(req)
+
+	// Retry once after delay on failure (per spec: 1 retry after 5 seconds)
+	if !response.IsSuccess(req.ExpectedStatus) && h.RetryDelay > 0 {
+		time.Sleep(h.RetryDelay)
+		response = h.doRequest(req)
+	}
+
+	return response
+}
+
+func (h *HTTPChecker) doRequest(req *CheckRequest) *CheckResponse {
 	ctx, cancel := context.WithTimeout(context.Background(), req.Timeout)
 	defer cancel()
 

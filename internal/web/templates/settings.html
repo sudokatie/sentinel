@@ -75,6 +75,7 @@
                         {{end}}
                     </td>
                     <td>
+                        <a href="{{$.BasePath}}/settings/checks/{{.ID}}/edit" class="btn btn-small">Edit</a>
                         <form action="{{$.BasePath}}/settings/checks/{{.ID}}/delete" method="POST" class="delete-form" onsubmit="return confirm('Delete this check?');">
                             <button type="submit" class="btn btn-danger btn-small">Delete</button>
                         </form>

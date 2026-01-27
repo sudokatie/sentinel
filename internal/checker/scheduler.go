@@ -14,14 +14,16 @@ type Scheduler struct {
 	alerter Alerter
 	config  SchedulerConfig
 
-	checks   map[int64]*scheduledCheck
-	mu       sync.RWMutex
-	stopChan chan struct{}
-	wg       sync.WaitGroup
+	checks      map[int64]*scheduledCheck
+	mu          sync.RWMutex
+	stopChan    chan struct{}
+	wg          sync.WaitGroup
+	cleanupStop chan struct{}
 }
 
 type SchedulerConfig struct {
 	ConsecutiveFailures int
+	RetentionDays       int
 }
 
 type scheduledCheck struct {
@@ -36,11 +38,12 @@ func NewScheduler(store storage.Storage, alerter Alerter, config SchedulerConfig
 	}
 
 	return &Scheduler{
-		storage:  store,
-		alerter:  alerter,
-		config:   config,
-		checks:   make(map[int64]*scheduledCheck),
-		stopChan: make(chan struct{}),
+		storage:     store,
+		alerter:     alerter,
+		config:      config,
+		checks:      make(map[int64]*scheduledCheck),
+		stopChan:    make(chan struct{}),
+		cleanupStop: make(chan struct{}),
 	}
 }
 
@@ -57,8 +60,45 @@ func (s *Scheduler) Start() error {
 		}
 	}
 
+	// Start daily cleanup job
+	go s.runCleanupJob()
+
 	fmt.Printf("Scheduler started with %d checks\n", len(s.checks))
 	return nil
+}
+
+func (s *Scheduler) runCleanupJob() {
+	// Run cleanup once on startup
+	s.doCleanup()
+
+	// Then run daily at midnight
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			s.doCleanup()
+		case <-s.cleanupStop:
+			return
+		case <-s.stopChan:
+			return
+		}
+	}
+}
+
+func (s *Scheduler) doCleanup() {
+	retentionDays := s.config.RetentionDays
+	if retentionDays < 1 {
+		retentionDays = 7 // Default 7 days
+	}
+
+	cutoff := time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour)
+	if err := s.storage.CleanupOldResults(cutoff); err != nil {
+		fmt.Printf("cleanup error: %v\n", err)
+	} else {
+		fmt.Printf("Cleaned up results older than %d days\n", retentionDays)
+	}
 }
 
 func (s *Scheduler) Stop() {

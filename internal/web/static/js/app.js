@@ -2,10 +2,30 @@
 
 // Auto-refresh dashboard every 30 seconds
 (function() {
-    if (window.location.pathname === '/') {
+    // Check if we're on the dashboard (path ends with / or is just the base path)
+    var path = window.location.pathname;
+    var isDashboard = path === '/' || path.match(/\/$/);
+    
+    if (isDashboard) {
+        var refreshInterval = 30000;
+        var countdown = refreshInterval / 1000;
+        
+        // Update last-updated text with countdown
+        var lastUpdated = document.querySelector('.last-updated');
+        if (lastUpdated) {
+            setInterval(function() {
+                countdown--;
+                if (countdown <= 0) {
+                    lastUpdated.textContent = 'Refreshing...';
+                } else {
+                    lastUpdated.textContent = 'Auto-refresh in ' + countdown + 's';
+                }
+            }, 1000);
+        }
+        
         setTimeout(function() {
             window.location.reload();
-        }, 30000);
+        }, refreshInterval);
     }
 })();
 

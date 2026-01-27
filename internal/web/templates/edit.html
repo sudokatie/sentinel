@@ -1,0 +1,66 @@
+{{define "edit.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit {{.Check.Name}} - Sentinel</title>
+    <link rel="stylesheet" href="{{.BasePath}}/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="{{.BasePath}}/" class="logo">SENTINEL</a>
+            <div class="nav-links">
+                <a href="{{.BasePath}}/">Dashboard</a>
+                <a href="{{.BasePath}}/settings">Settings</a>
+                <a href="{{.BasePath}}/logout">Logout</a>
+            </div>
+        </nav>
+    </header>
+    <main>
+<div class="settings">
+    <a href="{{.BasePath}}/settings" class="back-link">&larr; Back to Settings</a>
+    <h1>Edit Check</h1>
+
+    {{if .Error}}
+    <div class="alert error">{{.Error}}</div>
+    {{end}}
+
+    <form action="{{.BasePath}}/settings/checks/{{.Check.ID}}/edit" method="POST" class="check-form">
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" value="{{.Check.Name}}" required>
+        </div>
+        <div class="form-group">
+            <label for="url">URL</label>
+            <input type="url" id="url" name="url" value="{{.Check.URL}}" required>
+        </div>
+        <div class="form-group">
+            <label for="interval">Interval (seconds)</label>
+            <input type="number" id="interval" name="interval" value="{{.Check.IntervalSecs}}" min="10" max="3600">
+        </div>
+        <div class="form-group">
+            <label for="timeout">Timeout (seconds)</label>
+            <input type="number" id="timeout" name="timeout" value="{{.Check.TimeoutSecs}}" min="1" max="60">
+        </div>
+        <div class="form-group">
+            <label for="expected_status">Expected Status Code</label>
+            <input type="number" id="expected_status" name="expected_status" value="{{.Check.ExpectedStatus}}" min="100" max="599">
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="enabled" value="1" {{if .Check.Enabled}}checked{{end}}>
+                Enabled
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
+</div>
+    </main>
+    <footer>
+        <p>Sentinel Uptime Monitor</p>
+    </footer>
+</body>
+</html>
+{{end}}

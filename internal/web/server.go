@@ -101,6 +101,8 @@ func (s *Server) registerRoutes() {
 		s.echo.GET("/checks/:id", s.HandleCheckDetail, s.auth.RequireAuth)
 		s.echo.GET("/settings", s.HandleSettings, s.auth.RequireAuth)
 		s.echo.POST("/settings/checks", s.HandleCreateCheckForm, s.auth.RequireAuth)
+		s.echo.GET("/settings/checks/:id/edit", s.HandleEditCheckForm, s.auth.RequireAuth)
+		s.echo.POST("/settings/checks/:id/edit", s.HandleEditCheckForm, s.auth.RequireAuth)
 		s.echo.POST("/settings/checks/:id/delete", s.HandleDeleteCheckForm, s.auth.RequireAuth)
 
 		// API with auth
@@ -120,6 +122,8 @@ func (s *Server) registerRoutes() {
 		s.echo.GET("/checks/:id", s.HandleCheckDetail)
 		s.echo.GET("/settings", s.HandleSettings)
 		s.echo.POST("/settings/checks", s.HandleCreateCheckForm)
+		s.echo.GET("/settings/checks/:id/edit", s.HandleEditCheckForm)
+		s.echo.POST("/settings/checks/:id/edit", s.HandleEditCheckForm)
 		s.echo.POST("/settings/checks/:id/delete", s.HandleDeleteCheckForm)
 
 		api := s.echo.Group("/api")

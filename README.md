@@ -28,6 +28,25 @@ make build
 
 Visit http://localhost:3000 to access the dashboard.
 
+## CLI
+
+```bash
+# Start the server
+sentinel serve
+
+# Add a check via CLI
+sentinel check add https://api.example.com/health -n "My API" -i 30
+
+# List all checks
+sentinel check list
+
+# Test a URL without saving
+sentinel check test https://example.com
+
+# Show version
+sentinel version
+```
+
 ## Configuration
 
 Create `sentinel.yaml` in the current directory:
