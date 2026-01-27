@@ -214,8 +214,8 @@ func TestCheckConfigHelpers(t *testing.T) {
 	}
 
 	// Test defaults
-	if check.GetInterval() != time.Minute {
-		t.Errorf("expected default interval 1m, got %v", check.GetInterval())
+	if check.GetInterval() != time.Hour {
+		t.Errorf("expected default interval 1h, got %v", check.GetInterval())
 	}
 	if check.GetTimeout() != 10*time.Second {
 		t.Errorf("expected default timeout 10s, got %v", check.GetTimeout())

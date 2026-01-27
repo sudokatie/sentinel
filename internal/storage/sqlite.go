@@ -43,7 +43,7 @@ func (s *SQLiteStorage) Migrate() error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
 			url TEXT NOT NULL,
-			interval_seconds INTEGER NOT NULL DEFAULT 60,
+			interval_seconds INTEGER NOT NULL DEFAULT 3600,
 			timeout_seconds INTEGER NOT NULL DEFAULT 10,
 			expected_status INTEGER NOT NULL DEFAULT 200,
 			enabled BOOLEAN NOT NULL DEFAULT 1,

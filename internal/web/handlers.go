@@ -205,7 +205,7 @@ func (s *Server) HandleCreateCheckForm(c echo.Context) error {
 		return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?error=Name+and+URL+are+required")
 	}
 
-	interval := 60
+	interval := 3600
 	if intervalStr != "" {
 		if i, err := strconv.Atoi(intervalStr); err == nil && i > 0 {
 			interval = i

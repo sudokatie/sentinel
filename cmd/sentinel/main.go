@@ -60,7 +60,7 @@ func main() {
 		},
 	}
 	checkAddCmd.Flags().StringP("name", "n", "", "Check name (defaults to URL hostname)")
-	checkAddCmd.Flags().IntP("interval", "i", 60, "Check interval in seconds")
+	checkAddCmd.Flags().IntP("interval", "i", 3600, "Check interval in seconds")
 	checkAddCmd.Flags().IntP("timeout", "t", 10, "Request timeout in seconds")
 	checkAddCmd.Flags().IntP("status", "s", 200, "Expected HTTP status code")
 

@@ -221,11 +221,11 @@ func (c *Config) Validate() error {
 
 func (c *CheckConfig) GetInterval() time.Duration {
 	if c.Interval == "" {
-		return time.Minute
+		return time.Hour
 	}
 	d, err := time.ParseDuration(c.Interval)
 	if err != nil {
-		return time.Minute
+		return time.Hour
 	}
 	return d
 }

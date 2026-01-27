@@ -120,7 +120,7 @@ func (i *CreateCheckInput) ToCheck() *Check {
 		enabled = *i.Enabled
 	}
 
-	intervalSecs := 60
+	intervalSecs := 3600
 	if i.IntervalSecs > 0 {
 		intervalSecs = i.IntervalSecs
 	}
