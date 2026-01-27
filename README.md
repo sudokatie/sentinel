@@ -2,17 +2,24 @@
 
 Self-hosted uptime monitoring with beautiful dashboards.
 
-Know when things break before your users do.
+Know when things break before your users do. Know when they come back up before the panic sets in.
+
+## Why Sentinel?
+
+Because SaaS monitoring costs $30/month to watch 5 URLs. Because you don't need Kubernetes to know if your blog is down. Because sometimes the simple tool is the right tool.
+
+Sentinel is a single binary that checks your endpoints, tracks response times, sends alerts when things break, and shows you pretty graphs. That's it. No agents to install, no complex configuration, no vendor lock-in.
 
 ## Features
 
 - HTTP endpoint monitoring with configurable intervals
-- Response time tracking and uptime statistics
-- Email alerts on downtime and recovery
-- Terminal-aesthetic dashboard
-- SQLite storage (zero configuration)
-- Single binary deployment
-- REST API for automation
+- Response time tracking and uptime statistics  
+- Email alerts on downtime and recovery (with cooldown so you don't get spammed)
+- Terminal-aesthetic dashboard (because I have a type)
+- SQLite storage (zero configuration, just works)
+- Single binary deployment (download, run, done)
+- REST API for automation (because clicking buttons is for amateurs)
+- Hourly data aggregation (keeps 90 days of history without filling your disk)
 
 ## Quick Start
 
@@ -26,7 +33,7 @@ make build
 ./bin/sentinel
 ```
 
-Visit http://localhost:3000 to access the dashboard.
+Visit http://localhost:3000. You now have uptime monitoring. It took 30 seconds.
 
 ## CLI
 
@@ -34,13 +41,13 @@ Visit http://localhost:3000 to access the dashboard.
 # Start the server
 sentinel serve
 
-# Add a check via CLI
+# Add a check via CLI (because GUIs are optional)
 sentinel check add https://api.example.com/health -n "My API" -i 30
 
 # List all checks
 sentinel check list
 
-# Test a URL without saving
+# Test a URL without saving (for the paranoid)
 sentinel check test https://example.com
 
 # Show version
@@ -49,7 +56,7 @@ sentinel version
 
 ## Configuration
 
-Create `sentinel.yaml` in the current directory:
+Create `sentinel.yaml` in the current directory. Or don't - the defaults are sensible.
 
 ```yaml
 server:
@@ -60,9 +67,9 @@ database:
   path: "./sentinel.db"
 
 alerts:
-  consecutive_failures: 2
-  recovery_notification: true
-  cooldown_minutes: 5
+  consecutive_failures: 2      # Alert after 2 failures (not just one hiccup)
+  recovery_notification: true  # Tell me when it's back, too
+  cooldown_minutes: 5          # Don't spam me
   email:
     enabled: true
     smtp_host: smtp.gmail.com
@@ -75,8 +82,8 @@ alerts:
       - alerts@yoursite.com
 
 retention:
-  results_days: 7
-  aggregates_days: 90
+  results_days: 7              # Raw data kept for 7 days
+  aggregates_days: 90          # Hourly summaries kept for 90 days
 
 checks:
   - name: My API
@@ -91,21 +98,21 @@ checks:
 
 ### Environment Variables
 
-All configuration values can be overridden via environment variables with `SENTINEL_` prefix:
+Because putting passwords in config files is embarrassing:
 
 - `SENTINEL_PORT` - Server port
 - `SENTINEL_DB_PATH` - Database file path
 - `SENTINEL_SMTP_HOST` - SMTP server hostname
 - `SENTINEL_SMTP_PORT` - SMTP server port
 - `SENTINEL_SMTP_USER` - SMTP username
-- `SENTINEL_SMTP_PASSWORD` - SMTP password (recommended over config file)
+- `SENTINEL_SMTP_PASSWORD` - SMTP password (use this, not the config file)
 - `SENTINEL_SMTP_FROM` - From address for alerts
-- `SENTINEL_SMTP_TO` - Comma-separated list of recipient addresses
+- `SENTINEL_SMTP_TO` - Comma-separated recipient addresses
 - `SENTINEL_EMAIL_ENABLED` - Enable email alerts (true/false)
 
 ## API
 
-### Checks
+For when you want to automate everything:
 
 ```bash
 # List all checks
@@ -116,40 +123,22 @@ curl -X POST http://localhost:3000/api/checks \
   -H "Content-Type: application/json" \
   -d '{"name":"My Service","url":"https://example.com"}'
 
-# Get a check
+# Get check with stats
 curl http://localhost:3000/api/checks/1
 
-# Update a check
-curl -X PUT http://localhost:3000/api/checks/1 \
-  -H "Content-Type: application/json" \
-  -d '{"interval_seconds":60}'
-
-# Delete a check
-curl -X DELETE http://localhost:3000/api/checks/1
-
-# Trigger a check manually
+# Trigger a check manually (impatience is a virtue)
 curl -X POST http://localhost:3000/api/checks/1/trigger
 
-# Get check results
+# Get recent results
 curl http://localhost:3000/api/checks/1/results?limit=50
 
-# Get check statistics
+# Get statistics
 curl http://localhost:3000/api/checks/1/stats
-```
 
-### Incidents
-
-```bash
-# List incidents
+# List incidents (the hall of shame)
 curl http://localhost:3000/api/incidents?limit=20
 
-# Get incident details
-curl http://localhost:3000/api/incidents/1
-```
-
-### Health
-
-```bash
+# Health check (quis custodiet ipsos custodes?)
 curl http://localhost:3000/api/health
 ```
 
@@ -162,6 +151,8 @@ docker build -t sentinel .
 # Run
 docker run -d -p 3000:3000 -v sentinel-data:/data sentinel
 ```
+
+For the container enthusiasts. I don't judge. (I judge a little.)
 
 ## Development
 
@@ -189,6 +180,8 @@ sentinel/
 │   └── web/            # HTTP server and UI
 └── static/             # CSS and JavaScript
 ```
+
+4,400 lines of Go. Not a single framework. Just standard library and a bit of SQLite. The way code should be.
 
 ## License
 
