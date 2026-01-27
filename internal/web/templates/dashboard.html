@@ -1,0 +1,68 @@
+{{define "dashboard.html"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "content"}}
+<div class="dashboard">
+    <div class="status-header">
+        {{if .AllOperational}}
+        <h1 class="status-ok">All Systems Operational</h1>
+        {{else}}
+        <h1 class="status-error">Some Systems Down</h1>
+        {{end}}
+        <div class="uptime-badge">{{printf "%.2f" .OverallUptime}}% uptime</div>
+    </div>
+
+    {{range $group, $checks := .CheckGroups}}
+    <div class="check-group">
+        <h2 class="group-name">{{if eq $group "default"}}Services{{else}}{{$group}}{{end}}</h2>
+        <div class="checks-list">
+            {{range $checks}}
+            <a href="/checks/{{.ID}}" class="check-card">
+                <div class="check-status {{.Status}}"></div>
+                <div class="check-info">
+                    <div class="check-name">{{.Name}}</div>
+                    <div class="check-url">{{.URL}}</div>
+                </div>
+                <div class="check-metrics">
+                    <span class="response-time">{{.LastResponseMs}}ms</span>
+                    <span class="uptime">{{printf "%.1f" .UptimePercent}}%</span>
+                </div>
+                <div class="sparkline">
+                    {{range .Sparkline}}
+                    <span class="spark {{if .}}up{{else}}down{{end}}"></span>
+                    {{end}}
+                </div>
+            </a>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+
+    {{if .RecentIncidents}}
+    <div class="incidents-section">
+        <h2>Recent Incidents</h2>
+        <div class="incidents-list">
+            {{range .RecentIncidents}}
+            <div class="incident {{if .EndedAt}}resolved{{else}}active{{end}}">
+                <div class="incident-status">
+                    {{if .EndedAt}}Resolved{{else}}Active{{end}}
+                </div>
+                <div class="incident-info">
+                    <span class="incident-check">{{.CheckName}}</span>
+                    <span class="incident-time">{{.StartedAt.Format "Jan 2, 15:04"}}</span>
+                    {{if .EndedAt}}
+                    <span class="incident-duration">Duration: {{.DurationString}}</span>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+
+    <div class="last-updated">
+        Last updated: {{.LastUpdated.Format "15:04:05"}}
+    </div>
+</div>
+{{end}}

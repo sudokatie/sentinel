@@ -1,0 +1,501 @@
+:root {
+    --bg: #000000;
+    --bg-elevated: #0a0a0a;
+    --border: #222222;
+    --text: #cccccc;
+    --text-muted: #666666;
+    --accent: #ffffff;
+    --success: #00ff00;
+    --danger: #ff4444;
+    --warning: #ffaa00;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 14px;
+}
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Header */
+header {
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.logo {
+    font-size: 1.2rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.nav-links a {
+    margin-left: 2rem;
+    color: var(--text-muted);
+}
+
+.nav-links a:hover {
+    color: var(--accent);
+}
+
+/* Main content */
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Footer */
+footer {
+    border-top: 1px solid var(--border);
+    padding: 1rem 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+/* Dashboard */
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.status-ok {
+    color: var(--success);
+}
+
+.status-error {
+    color: var(--danger);
+}
+
+.uptime-badge {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    font-size: 1.2rem;
+}
+
+/* Check groups */
+.check-group {
+    margin-bottom: 2rem;
+}
+
+.group-name {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+}
+
+.checks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.check-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    color: var(--text);
+}
+
+.check-card:hover {
+    border-color: var(--text-muted);
+    text-decoration: none;
+}
+
+.check-status {
+    width: 12px;
+    height: 12px;
+    border-radius: 0;
+}
+
+.check-status.up, .up {
+    background: var(--success);
+}
+
+.check-status.down, .down {
+    background: var(--danger);
+}
+
+.check-status.pending, .pending {
+    background: var(--text-muted);
+}
+
+.check-info {
+    flex: 1;
+}
+
+.check-name {
+    font-weight: bold;
+}
+
+.check-url {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.check-metrics {
+    text-align: right;
+}
+
+.response-time {
+    display: block;
+    font-size: 1.2rem;
+}
+
+.uptime {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.sparkline {
+    display: flex;
+    gap: 2px;
+}
+
+.spark {
+    width: 4px;
+    height: 16px;
+}
+
+.spark.up {
+    background: var(--success);
+}
+
+.spark.down {
+    background: var(--danger);
+}
+
+/* Incidents */
+.incidents-section {
+    margin-top: 2rem;
+}
+
+.incidents-section h2 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+.incidents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.incident {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+}
+
+.incident.active {
+    border-color: var(--danger);
+}
+
+.incident-status {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.incident.resolved .incident-status {
+    color: var(--success);
+}
+
+.incident.active .incident-status {
+    color: var(--danger);
+}
+
+.incident-info {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.9rem;
+}
+
+.incident-check {
+    font-weight: bold;
+}
+
+.incident-time, .incident-duration {
+    color: var(--text-muted);
+}
+
+.last-updated {
+    margin-top: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+/* Check detail */
+.check-detail .back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: var(--text-muted);
+}
+
+.check-header {
+    margin-bottom: 2rem;
+}
+
+.check-header h1 {
+    display: inline;
+    margin-right: 1rem;
+}
+
+.check-status-large {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+.check-status-large.up {
+    background: var(--success);
+    color: var(--bg);
+}
+
+.check-status-large.down {
+    background: var(--danger);
+    color: var(--bg);
+}
+
+.check-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.meta-item label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    padding: 1rem;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.chart-section {
+    margin-bottom: 2rem;
+}
+
+.chart-section h2 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Settings */
+.settings h1 {
+    margin-bottom: 2rem;
+}
+
+.settings section {
+    margin-bottom: 3rem;
+}
+
+.settings h2 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.alert {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid;
+}
+
+.alert.success {
+    border-color: var(--success);
+    color: var(--success);
+}
+
+.alert.error {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.check-form {
+    display: grid;
+    gap: 1rem;
+    max-width: 500px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.btn:hover {
+    border-color: var(--accent);
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+}
+
+.btn-danger {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.btn-danger:hover {
+    background: var(--danger);
+    color: var(--bg);
+}
+
+.btn-small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.checks-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.checks-table th,
+.checks-table td {
+    text-align: left;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.checks-table th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.url-cell {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.badge.enabled {
+    color: var(--success);
+}
+
+.badge.disabled {
+    color: var(--text-muted);
+}
+
+.delete-form {
+    display: inline;
+}
+
+.no-checks {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    main {
+        padding: 1rem;
+    }
+    
+    .check-card {
+        flex-wrap: wrap;
+    }
+    
+    .sparkline {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+}

@@ -1,0 +1,101 @@
+{{define "check.html"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "content"}}
+<div class="check-detail">
+    <div class="check-header">
+        <a href="/" class="back-link">&larr; Back to Dashboard</a>
+        <h1>{{.Check.Name}}</h1>
+        <div class="check-status-large {{.Check.Status}}">{{.Check.Status}}</div>
+    </div>
+
+    <div class="check-meta">
+        <div class="meta-item">
+            <label>URL</label>
+            <span>{{.Check.URL}}</span>
+        </div>
+        <div class="meta-item">
+            <label>Interval</label>
+            <span>{{.Check.IntervalSecs}}s</span>
+        </div>
+        <div class="meta-item">
+            <label>Timeout</label>
+            <span>{{.Check.TimeoutSecs}}s</span>
+        </div>
+        <div class="meta-item">
+            <label>Expected Status</label>
+            <span>{{.Check.ExpectedStatus}}</span>
+        </div>
+        {{if .Check.LastCheckedAt}}
+        <div class="meta-item">
+            <label>Last Checked</label>
+            <span>{{.Check.LastCheckedAt.Format "15:04:05"}}</span>
+        </div>
+        {{end}}
+        <div class="meta-item">
+            <label>Response Time</label>
+            <span>{{.Check.LastResponseMs}}ms</span>
+        </div>
+    </div>
+
+    {{if .Stats}}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Uptime (24h)</div>
+            <div class="stat-value">{{printf "%.2f" .Stats.UptimePercent24h}}%</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Uptime (7d)</div>
+            <div class="stat-value">{{printf "%.2f" .Stats.UptimePercent7d}}%</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Uptime (30d)</div>
+            <div class="stat-value">{{printf "%.2f" .Stats.UptimePercent30d}}%</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Avg Response (24h)</div>
+            <div class="stat-value">{{.Stats.AvgResponseMs24h}}ms</div>
+        </div>
+    </div>
+    {{end}}
+
+    <div class="chart-section">
+        <h2>Response Time</h2>
+        <canvas id="responseChart" width="800" height="200"></canvas>
+    </div>
+
+    {{if .Incidents}}
+    <div class="incidents-section">
+        <h2>Incident History</h2>
+        <div class="incidents-list">
+            {{range .Incidents}}
+            <div class="incident {{if .EndedAt}}resolved{{else}}active{{end}}">
+                <div class="incident-status">
+                    {{if .EndedAt}}Resolved{{else}}Active{{end}}
+                </div>
+                <div class="incident-info">
+                    <span class="incident-time">{{.StartedAt.Format "Jan 2, 15:04"}}</span>
+                    {{if .EndedAt}}
+                    <span class="incident-duration">Duration: {{.DurationString}}</span>
+                    {{end}}
+                    {{if .Cause}}
+                    <span class="incident-cause">{{.Cause}}</span>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+</div>
+
+<script>
+    // Chart data from server
+    var chartData = {
+        labels: [{{range .Results}}"{{.CheckedAt.Format "15:04"}}",{{end}}],
+        values: [{{range .Results}}{{.ResponseTimeMs}},{{end}}],
+        statuses: [{{range .Results}}"{{.Status}}",{{end}}]
+    };
+</script>
+{{end}}
