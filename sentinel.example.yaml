@@ -1,0 +1,50 @@
+# Sentinel Configuration Example
+# Copy this to sentinel.yaml and customize
+
+server:
+  host: "0.0.0.0"
+  port: 3000
+  # base_url: "https://status.example.com"  # For reverse proxy setups
+
+database:
+  path: "./sentinel.db"
+
+alerts:
+  consecutive_failures: 2      # Alert after N consecutive failures
+  recovery_notification: true  # Send alert when service recovers
+  cooldown_minutes: 5          # Minimum time between repeat alerts
+  
+  email:
+    enabled: false
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    smtp_user: ""
+    smtp_password: ""  # Use SENTINEL_SMTP_PASSWORD env var instead
+    smtp_tls: true
+    from_address: "sentinel@example.com"
+    to_addresses:
+      - "alerts@example.com"
+
+retention:
+  results_days: 7      # Keep individual results for N days
+  aggregates_days: 90  # Keep aggregated data for N days
+
+# Define checks here or add via the web UI
+checks:
+  - name: "Example API"
+    url: "https://api.example.com/health"
+    interval: "30s"
+    timeout: "10s"
+    expected_status: 200
+    tags:
+      - api
+      - production
+
+  - name: "Website"
+    url: "https://www.example.com"
+    interval: "1m"
+    timeout: "15s"
+    expected_status: 200
+    tags:
+      - web
+      - production
