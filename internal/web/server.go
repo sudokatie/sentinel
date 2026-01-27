@@ -116,6 +116,7 @@ func (s *Server) registerRoutes() {
 		api.GET("/checks/:id/stats", s.HandleGetCheckStats)
 		api.POST("/checks/:id/trigger", s.HandleTriggerCheck)
 		api.GET("/incidents", s.HandleListIncidents)
+		api.GET("/incidents/:id", s.HandleGetIncident)
 	} else {
 		// No auth - public access
 		s.echo.GET("/", s.HandleDashboard)
@@ -136,6 +137,7 @@ func (s *Server) registerRoutes() {
 		api.GET("/checks/:id/stats", s.HandleGetCheckStats)
 		api.POST("/checks/:id/trigger", s.HandleTriggerCheck)
 		api.GET("/incidents", s.HandleListIncidents)
+		api.GET("/incidents/:id", s.HandleGetIncident)
 	}
 }
 

@@ -262,3 +262,20 @@ func (s *Server) HandleListIncidents(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, APIResponse{Data: incidents})
 }
+
+func (s *Server) HandleGetIncident(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, APIResponse{Error: "Invalid incident ID"})
+	}
+
+	incident, err := s.storage.GetIncident(id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, APIResponse{Error: err.Error()})
+	}
+	if incident == nil {
+		return c.JSON(http.StatusNotFound, APIResponse{Error: "Incident not found"})
+	}
+
+	return c.JSON(http.StatusOK, APIResponse{Data: incident})
+}

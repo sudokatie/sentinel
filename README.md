@@ -142,6 +142,9 @@ curl http://localhost:3000/api/checks/1/stats
 ```bash
 # List incidents
 curl http://localhost:3000/api/incidents?limit=20
+
+# Get incident details
+curl http://localhost:3000/api/incidents/1
 ```
 
 ### Health
