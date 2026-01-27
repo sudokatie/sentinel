@@ -19,9 +19,10 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Host    string `yaml:"host"`
-	Port    int    `yaml:"port"`
-	BaseURL string `yaml:"base_url"`
+	Host    string            `yaml:"host"`
+	Port    int               `yaml:"port"`
+	BaseURL string            `yaml:"base_url"`
+	Users   map[string]string `yaml:"users"` // username -> password
 }
 
 type DatabaseConfig struct {

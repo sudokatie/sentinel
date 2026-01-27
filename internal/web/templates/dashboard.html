@@ -1,8 +1,24 @@
 {{define "dashboard.html"}}
-{{template "layout" .}}
-{{end}}
-
-{{define "content"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Sentinel</title>
+    <link rel="stylesheet" href="{{.BasePath}}/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="{{.BasePath}}/" class="logo">SENTINEL</a>
+            <div class="nav-links">
+                <a href="{{.BasePath}}/">Dashboard</a>
+                <a href="{{.BasePath}}/settings">Settings</a>
+                <a href="{{.BasePath}}/logout">Logout</a>
+            </div>
+        </nav>
+    </header>
+    <main>
 <div class="dashboard">
     <div class="status-header">
         {{if .AllOperational}}
@@ -18,7 +34,7 @@
         <h2 class="group-name">{{if eq $group "default"}}Services{{else}}{{$group}}{{end}}</h2>
         <div class="checks-list">
             {{range $checks}}
-            <a href="/checks/{{.ID}}" class="check-card">
+            <a href="{{$.BasePath}}/checks/{{.ID}}" class="check-card">
                 <div class="check-status {{.Status}}"></div>
                 <div class="check-info">
                     <div class="check-name">{{.Name}}</div>
@@ -65,4 +81,11 @@
         Last updated: {{.LastUpdated.Format "15:04:05"}}
     </div>
 </div>
+    </main>
+    <footer>
+        <p>Sentinel Uptime Monitor</p>
+    </footer>
+    <script src="{{.BasePath}}/static/js/app.js"></script>
+</body>
+</html>
 {{end}}

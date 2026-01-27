@@ -5,15 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}} - Sentinel</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="{{.BasePath}}/static/css/style.css">
 </head>
 <body>
     <header>
         <nav>
-            <a href="/" class="logo">SENTINEL</a>
+            <a href="{{.BasePath}}/" class="logo">SENTINEL</a>
             <div class="nav-links">
-                <a href="/">Dashboard</a>
-                <a href="/settings">Settings</a>
+                <a href="{{.BasePath}}/">Dashboard</a>
+                <a href="{{.BasePath}}/settings">Settings</a>
+                <a href="{{.BasePath}}/logout">Logout</a>
             </div>
         </nav>
     </header>
@@ -23,7 +24,7 @@
     <footer>
         <p>Sentinel Uptime Monitor</p>
     </footer>
-    <script src="/static/js/app.js"></script>
+    <script src="{{.BasePath}}/static/js/app.js"></script>
 </body>
 </html>
 {{end}}

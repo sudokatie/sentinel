@@ -12,12 +12,13 @@ import (
 )
 
 type DashboardData struct {
-	Title          string
-	AllOperational bool
-	OverallUptime  float64
-	CheckGroups    map[string][]*CheckWithStatus
+	Title           string
+	BasePath        string
+	AllOperational  bool
+	OverallUptime   float64
+	CheckGroups     map[string][]*CheckWithStatus
 	RecentIncidents []*storage.Incident
-	LastUpdated    time.Time
+	LastUpdated     time.Time
 }
 
 type CheckWithStatus struct {
@@ -28,6 +29,7 @@ type CheckWithStatus struct {
 
 type CheckDetailData struct {
 	Title     string
+	BasePath  string
 	Check     *storage.Check
 	Stats     *storage.CheckStats
 	Results   []*storage.CheckResult
@@ -35,10 +37,11 @@ type CheckDetailData struct {
 }
 
 type SettingsData struct {
-	Title   string
-	Checks  []*storage.Check
-	Message string
-	Error   string
+	Title    string
+	BasePath string
+	Checks   []*storage.Check
+	Message  string
+	Error    string
 }
 
 func (s *Server) HandleDashboard(c echo.Context) error {
@@ -107,6 +110,7 @@ func (s *Server) HandleDashboard(c echo.Context) error {
 
 	data := DashboardData{
 		Title:           "Dashboard",
+		BasePath:        s.BasePath(),
 		AllOperational:  allUp,
 		OverallUptime:   overallUptime,
 		CheckGroups:     checkGroups,
@@ -153,6 +157,7 @@ func (s *Server) HandleCheckDetail(c echo.Context) error {
 
 	data := CheckDetailData{
 		Title:     check.Name,
+		BasePath:  s.BasePath(),
 		Check:     check,
 		Stats:     stats,
 		Results:   results,
@@ -174,10 +179,11 @@ func (s *Server) HandleSettings(c echo.Context) error {
 	})
 
 	data := SettingsData{
-		Title:   "Settings",
-		Checks:  checks,
-		Message: c.QueryParam("message"),
-		Error:   c.QueryParam("error"),
+		Title:    "Settings",
+		BasePath: s.BasePath(),
+		Checks:   checks,
+		Message:  c.QueryParam("message"),
+		Error:    c.QueryParam("error"),
 	}
 
 	return c.Render(http.StatusOK, "settings.html", data)
@@ -189,7 +195,7 @@ func (s *Server) HandleCreateCheckForm(c echo.Context) error {
 	intervalStr := c.FormValue("interval")
 
 	if name == "" || url == "" {
-		return c.Redirect(http.StatusSeeOther, "/settings?error=Name+and+URL+are+required")
+		return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?error=Name+and+URL+are+required")
 	}
 
 	interval := 60
@@ -209,7 +215,7 @@ func (s *Server) HandleCreateCheckForm(c echo.Context) error {
 	}
 
 	if err := s.storage.CreateCheck(check); err != nil {
-		return c.Redirect(http.StatusSeeOther, "/settings?error=Failed+to+create+check")
+		return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?error=Failed+to+create+check")
 	}
 
 	// Add to scheduler
@@ -217,14 +223,14 @@ func (s *Server) HandleCreateCheckForm(c echo.Context) error {
 		s.scheduler.AddCheck(check)
 	}
 
-	return c.Redirect(http.StatusSeeOther, "/settings?message=Check+created")
+	return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?message=Check+created")
 }
 
 func (s *Server) HandleDeleteCheckForm(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return c.Redirect(http.StatusSeeOther, "/settings?error=Invalid+check+ID")
+		return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?error=Invalid+check+ID")
 	}
 
 	// Remove from scheduler first
@@ -233,8 +239,8 @@ func (s *Server) HandleDeleteCheckForm(c echo.Context) error {
 	}
 
 	if err := s.storage.DeleteCheck(id); err != nil {
-		return c.Redirect(http.StatusSeeOther, "/settings?error=Failed+to+delete+check")
+		return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?error=Failed+to+delete+check")
 	}
 
-	return c.Redirect(http.StatusSeeOther, "/settings?message=Check+deleted")
+	return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?message=Check+deleted")
 }

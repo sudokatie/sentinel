@@ -1,8 +1,24 @@
 {{define "settings.html"}}
-{{template "layout" .}}
-{{end}}
-
-{{define "content"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Sentinel</title>
+    <link rel="stylesheet" href="{{.BasePath}}/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="{{.BasePath}}/" class="logo">SENTINEL</a>
+            <div class="nav-links">
+                <a href="{{.BasePath}}/">Dashboard</a>
+                <a href="{{.BasePath}}/settings">Settings</a>
+                <a href="{{.BasePath}}/logout">Logout</a>
+            </div>
+        </nav>
+    </header>
+    <main>
 <div class="settings">
     <h1>Settings</h1>
 
@@ -15,7 +31,7 @@
 
     <section class="add-check">
         <h2>Add Check</h2>
-        <form action="/settings/checks" method="POST" class="check-form">
+        <form action="{{.BasePath}}/settings/checks" method="POST" class="check-form">
             <div class="form-group">
                 <label for="name">Name</label>
                 <input type="text" id="name" name="name" required placeholder="My API">
@@ -59,7 +75,7 @@
                         {{end}}
                     </td>
                     <td>
-                        <form action="/settings/checks/{{.ID}}/delete" method="POST" class="delete-form" onsubmit="return confirm('Delete this check?');">
+                        <form action="{{$.BasePath}}/settings/checks/{{.ID}}/delete" method="POST" class="delete-form" onsubmit="return confirm('Delete this check?');">
                             <button type="submit" class="btn btn-danger btn-small">Delete</button>
                         </form>
                     </td>
@@ -72,4 +88,11 @@
         {{end}}
     </section>
 </div>
+    </main>
+    <footer>
+        <p>Sentinel Uptime Monitor</p>
+    </footer>
+    <script src="{{.BasePath}}/static/js/app.js"></script>
+</body>
+</html>
 {{end}}

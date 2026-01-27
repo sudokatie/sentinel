@@ -1,11 +1,27 @@
 {{define "check.html"}}
-{{template "layout" .}}
-{{end}}
-
-{{define "content"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Sentinel</title>
+    <link rel="stylesheet" href="{{.BasePath}}/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="{{.BasePath}}/" class="logo">SENTINEL</a>
+            <div class="nav-links">
+                <a href="{{.BasePath}}/">Dashboard</a>
+                <a href="{{.BasePath}}/settings">Settings</a>
+                <a href="{{.BasePath}}/logout">Logout</a>
+            </div>
+        </nav>
+    </header>
+    <main>
 <div class="check-detail">
     <div class="check-header">
-        <a href="/" class="back-link">&larr; Back to Dashboard</a>
+        <a href="{{.BasePath}}/" class="back-link">&larr; Back to Dashboard</a>
         <h1>{{.Check.Name}}</h1>
         <div class="check-status-large {{.Check.Status}}">{{.Check.Status}}</div>
     </div>
@@ -89,13 +105,18 @@
     </div>
     {{end}}
 </div>
-
-<script>
-    // Chart data from server
-    var chartData = {
-        labels: [{{range .Results}}"{{.CheckedAt.Format "15:04"}}",{{end}}],
-        values: [{{range .Results}}{{.ResponseTimeMs}},{{end}}],
-        statuses: [{{range .Results}}"{{.Status}}",{{end}}]
-    };
-</script>
+    </main>
+    <footer>
+        <p>Sentinel Uptime Monitor</p>
+    </footer>
+    <script src="{{.BasePath}}/static/js/app.js"></script>
+    <script>
+        var chartData = {
+            labels: [{{range .Results}}"{{.CheckedAt.Format "15:04"}}",{{end}}],
+            values: [{{range .Results}}{{.ResponseTimeMs}},{{end}}],
+            statuses: [{{range .Results}}"{{.Status}}",{{end}}]
+        };
+    </script>
+</body>
+</html>
 {{end}}

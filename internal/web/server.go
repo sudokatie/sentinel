@@ -29,17 +29,23 @@ type Server struct {
 	config    *config.ServerConfig
 	storage   storage.Storage
 	scheduler *checker.Scheduler
+	auth      *AuthManager
 }
 
 type Template struct {
 	templates *template.Template
+	basePath  string
 }
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	// Inject base path into data if it's a map
+	if m, ok := data.(map[string]interface{}); ok {
+		m["BasePath"] = t.basePath
+	}
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
-func NewServer(cfg *config.ServerConfig, store storage.Storage, sched *checker.Scheduler) *Server {
+func NewServer(cfg *config.ServerConfig, store storage.Storage, sched *checker.Scheduler, users map[string]string) *Server {
 	e := echo.New()
 	e.HideBanner = true
 
@@ -49,17 +55,28 @@ func NewServer(cfg *config.ServerConfig, store storage.Storage, sched *checker.S
 
 	// Parse templates
 	tmpl := template.Must(template.ParseFS(templateFS, "templates/*.html"))
-	e.Renderer = &Template{templates: tmpl}
+	basePath := ""
+	if cfg.BaseURL != "" {
+		basePath = cfg.BaseURL
+	}
+	e.Renderer = &Template{templates: tmpl, basePath: basePath}
 
 	// Static files
 	staticContent, _ := fs.Sub(staticFS, "static")
 	e.StaticFS("/static", staticContent)
+
+	// Auth manager
+	var auth *AuthManager
+	if len(users) > 0 {
+		auth = NewAuthManager(users, basePath)
+	}
 
 	server := &Server{
 		echo:      e,
 		config:    cfg,
 		storage:   store,
 		scheduler: sched,
+		auth:      auth,
 	}
 
 	// Register routes
@@ -69,25 +86,57 @@ func NewServer(cfg *config.ServerConfig, store storage.Storage, sched *checker.S
 }
 
 func (s *Server) registerRoutes() {
-	// Pages
-	s.echo.GET("/", s.HandleDashboard)
-	s.echo.GET("/checks/:id", s.HandleCheckDetail)
-	s.echo.GET("/settings", s.HandleSettings)
-	s.echo.POST("/settings/checks", s.HandleCreateCheckForm)
-	s.echo.POST("/settings/checks/:id/delete", s.HandleDeleteCheckForm)
+	// Auth routes (always public)
+	s.echo.GET("/login", s.HandleLogin)
+	s.echo.POST("/login", s.HandleLogin)
+	s.echo.GET("/logout", s.HandleLogout)
 
-	// API
-	api := s.echo.Group("/api")
-	api.GET("/health", s.HandleHealth)
-	api.GET("/checks", s.HandleListChecks)
-	api.POST("/checks", s.HandleCreateCheck)
-	api.GET("/checks/:id", s.HandleGetCheck)
-	api.PUT("/checks/:id", s.HandleUpdateCheck)
-	api.DELETE("/checks/:id", s.HandleDeleteCheck)
-	api.GET("/checks/:id/results", s.HandleGetCheckResults)
-	api.GET("/checks/:id/stats", s.HandleGetCheckStats)
-	api.POST("/checks/:id/trigger", s.HandleTriggerCheck)
-	api.GET("/incidents", s.HandleListIncidents)
+	// Health check (public)
+	s.echo.GET("/api/health", s.HandleHealth)
+
+	// Protected routes
+	if s.auth != nil {
+		// Pages with auth
+		s.echo.GET("/", s.HandleDashboard, s.auth.RequireAuth)
+		s.echo.GET("/checks/:id", s.HandleCheckDetail, s.auth.RequireAuth)
+		s.echo.GET("/settings", s.HandleSettings, s.auth.RequireAuth)
+		s.echo.POST("/settings/checks", s.HandleCreateCheckForm, s.auth.RequireAuth)
+		s.echo.POST("/settings/checks/:id/delete", s.HandleDeleteCheckForm, s.auth.RequireAuth)
+
+		// API with auth
+		api := s.echo.Group("/api", s.auth.RequireAuth)
+		api.GET("/checks", s.HandleListChecks)
+		api.POST("/checks", s.HandleCreateCheck)
+		api.GET("/checks/:id", s.HandleGetCheck)
+		api.PUT("/checks/:id", s.HandleUpdateCheck)
+		api.DELETE("/checks/:id", s.HandleDeleteCheck)
+		api.GET("/checks/:id/results", s.HandleGetCheckResults)
+		api.GET("/checks/:id/stats", s.HandleGetCheckStats)
+		api.POST("/checks/:id/trigger", s.HandleTriggerCheck)
+		api.GET("/incidents", s.HandleListIncidents)
+	} else {
+		// No auth - public access
+		s.echo.GET("/", s.HandleDashboard)
+		s.echo.GET("/checks/:id", s.HandleCheckDetail)
+		s.echo.GET("/settings", s.HandleSettings)
+		s.echo.POST("/settings/checks", s.HandleCreateCheckForm)
+		s.echo.POST("/settings/checks/:id/delete", s.HandleDeleteCheckForm)
+
+		api := s.echo.Group("/api")
+		api.GET("/checks", s.HandleListChecks)
+		api.POST("/checks", s.HandleCreateCheck)
+		api.GET("/checks/:id", s.HandleGetCheck)
+		api.PUT("/checks/:id", s.HandleUpdateCheck)
+		api.DELETE("/checks/:id", s.HandleDeleteCheck)
+		api.GET("/checks/:id/results", s.HandleGetCheckResults)
+		api.GET("/checks/:id/stats", s.HandleGetCheckStats)
+		api.POST("/checks/:id/trigger", s.HandleTriggerCheck)
+		api.GET("/incidents", s.HandleListIncidents)
+	}
+}
+
+func (s *Server) BasePath() string {
+	return s.config.BaseURL
 }
 
 func (s *Server) Start() error {
