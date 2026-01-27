@@ -1,8 +1,21 @@
 // Sentinel Dashboard JavaScript
 
+// Theme colors (One Dark)
+const theme = {
+    bg: '#1e2127',
+    bgElevated: '#282c34',
+    border: '#3e4451',
+    text: '#abb2bf',
+    textMuted: '#5c6370',
+    accent: '#e5e5e5',
+    success: '#98c379',
+    warning: '#e5c07b',
+    danger: '#e06c75',
+    info: '#61afef'
+};
+
 // Auto-refresh dashboard every 30 seconds
 (function() {
-    // Check if we're on the dashboard (path ends with / or is just the base path)
     var path = window.location.pathname;
     var isDashboard = path === '/' || path.match(/\/$/);
     
@@ -10,7 +23,6 @@
         var refreshInterval = 30000;
         var countdown = refreshInterval / 1000;
         
-        // Update last-updated text with countdown
         var lastUpdated = document.querySelector('.last-updated');
         if (lastUpdated) {
             setInterval(function() {
@@ -29,7 +41,7 @@
     }
 })();
 
-// Simple chart drawing using canvas
+// Response time chart
 function drawResponseChart() {
     var canvas = document.getElementById('responseChart');
     if (!canvas || typeof chartData === 'undefined') return;
@@ -41,85 +53,113 @@ function drawResponseChart() {
     
     if (data.length === 0) return;
     
-    var width = canvas.width;
-    var height = canvas.height;
-    var padding = 40;
-    var chartWidth = width - padding * 2;
-    var chartHeight = height - padding * 2;
+    // Set canvas size for retina
+    var dpr = window.devicePixelRatio || 1;
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
     
-    // Find max value for scaling
+    var width = rect.width;
+    var height = rect.height;
+    var padding = { top: 20, right: 20, bottom: 30, left: 50 };
+    var chartWidth = width - padding.left - padding.right;
+    var chartHeight = height - padding.top - padding.bottom;
+    
+    // Find max value
     var maxVal = Math.max.apply(null, data.filter(function(v) { return v > 0; }));
     if (maxVal === 0) maxVal = 100;
-    maxVal = maxVal * 1.1; // Add 10% padding
+    maxVal = Math.ceil(maxVal * 1.1 / 100) * 100; // Round up to nearest 100
     
     // Clear canvas
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = theme.bgElevated;
     ctx.fillRect(0, 0, width, height);
     
-    // Draw grid
-    ctx.strokeStyle = '#222';
+    // Draw grid lines
+    ctx.strokeStyle = theme.border;
     ctx.lineWidth = 1;
     
-    // Horizontal grid lines
-    for (var i = 0; i <= 4; i++) {
-        var y = padding + (chartHeight / 4) * i;
+    var gridLines = 4;
+    for (var i = 0; i <= gridLines; i++) {
+        var y = padding.top + (chartHeight / gridLines) * i;
+        
         ctx.beginPath();
-        ctx.moveTo(padding, y);
-        ctx.lineTo(width - padding, y);
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(width - padding.right, y);
         ctx.stroke();
         
         // Y-axis labels
-        var val = Math.round(maxVal - (maxVal / 4) * i);
-        ctx.fillStyle = '#666';
-        ctx.font = '10px monospace';
+        var val = Math.round(maxVal - (maxVal / gridLines) * i);
+        ctx.fillStyle = theme.textMuted;
+        ctx.font = '11px SF Mono, Monaco, monospace';
         ctx.textAlign = 'right';
-        ctx.fillText(val + 'ms', padding - 5, y + 3);
+        ctx.fillText(val + 'ms', padding.left - 8, y + 4);
     }
     
-    // Draw data
-    if (data.length > 1) {
-        var stepX = chartWidth / (data.length - 1);
+    if (data.length < 2) return;
+    
+    var stepX = chartWidth / (data.length - 1);
+    
+    // Draw area fill
+    ctx.beginPath();
+    ctx.moveTo(padding.left, padding.top + chartHeight);
+    
+    for (var i = 0; i < data.length; i++) {
+        var x = padding.left + stepX * i;
+        var y = padding.top + chartHeight - (data[i] / maxVal * chartHeight);
+        ctx.lineTo(x, y);
+    }
+    
+    ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+    ctx.closePath();
+    
+    var gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
+    gradient.addColorStop(0, 'rgba(97, 175, 239, 0.3)');
+    gradient.addColorStop(1, 'rgba(97, 175, 239, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    // Draw line
+    ctx.beginPath();
+    ctx.strokeStyle = theme.info;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    
+    for (var i = 0; i < data.length; i++) {
+        var x = padding.left + stepX * i;
+        var y = padding.top + chartHeight - (data[i] / maxVal * chartHeight);
         
-        // Draw line
-        ctx.beginPath();
-        ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 2;
-        
-        for (var i = 0; i < data.length; i++) {
-            var x = padding + stepX * i;
-            var y = padding + chartHeight - (data[i] / maxVal * chartHeight);
-            
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
         }
-        ctx.stroke();
-        
-        // Draw points
-        for (var i = 0; i < data.length; i++) {
-            var x = padding + stepX * i;
-            var y = padding + chartHeight - (data[i] / maxVal * chartHeight);
+    }
+    ctx.stroke();
+    
+    // Draw points for failures
+    for (var i = 0; i < data.length; i++) {
+        if (statuses[i] === 'down') {
+            var x = padding.left + stepX * i;
+            var y = padding.top + chartHeight - (data[i] / maxVal * chartHeight);
             
             ctx.beginPath();
-            ctx.fillStyle = statuses[i] === 'up' ? '#00ff00' : '#ff4444';
-            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = theme.danger;
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
             ctx.fill();
         }
     }
-    
-    // Draw axes
-    ctx.strokeStyle = '#444';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding, padding);
-    ctx.lineTo(padding, height - padding);
-    ctx.lineTo(width - padding, height - padding);
-    ctx.stroke();
 }
 
-// Initialize chart on page load
+// Initialize
 document.addEventListener('DOMContentLoaded', function() {
     drawResponseChart();
+    
+    // Redraw on resize
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(drawResponseChart, 100);
+    });
 });

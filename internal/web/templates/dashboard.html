@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.Title}} - Sentinel</title>
+    <title>Dashboard - Sentinel</title>
     <link rel="stylesheet" href="{{.BasePath}}/static/css/style.css">
 </head>
 <body>
@@ -19,71 +19,84 @@
         </nav>
     </header>
     <main>
-<div class="dashboard">
-    <div class="status-header">
-        {{if .AllOperational}}
-        <h1 class="status-ok">All Systems Operational</h1>
-        {{else}}
-        <h1 class="status-error">Some Systems Down</h1>
-        {{end}}
-        <div class="uptime-badge">{{printf "%.2f" .OverallUptime}}% uptime</div>
-    </div>
-
-    {{range $group, $checks := .CheckGroups}}
-    <div class="check-group">
-        <h2 class="group-name">{{if eq $group "default"}}Services{{else}}{{$group}}{{end}}</h2>
-        <div class="checks-list">
-            {{range $checks}}
-            <a href="{{$.BasePath}}/checks/{{.ID}}" class="check-card">
-                <div class="check-status {{.Status}}"></div>
-                <div class="check-info">
-                    <div class="check-name">{{.Name}}</div>
-                    <div class="check-url">{{.URL}}</div>
-                </div>
-                <div class="check-metrics">
-                    <span class="response-time">{{.LastResponseMs}}ms</span>
-                    <span class="uptime">{{printf "%.1f" .UptimePercent}}%</span>
-                </div>
-                <div class="sparkline">
-                    {{range .Sparkline}}
-                    <span class="spark {{if .}}up{{else}}down{{end}}"></span>
-                    {{end}}
-                </div>
-            </a>
-            {{end}}
+        <div class="status-header">
+            <h1>
+                {{if .AllOperational}}
+                <span class="status-ok">All Systems Operational</span>
+                {{else}}
+                <span class="status-error">Issues Detected</span>
+                {{end}}
+            </h1>
+            <div class="uptime-badge">
+                {{printf "%.1f" .OverallUptime}}<small>% uptime</small>
+            </div>
         </div>
-    </div>
-    {{end}}
 
-    {{if .RecentIncidents}}
-    <div class="incidents-section">
-        <h2>Recent Incidents</h2>
-        <div class="incidents-list">
-            {{range .RecentIncidents}}
-            <div class="incident {{if .EndedAt}}resolved{{else}}active{{end}}">
-                <div class="incident-status">
-                    {{if .EndedAt}}Resolved{{else}}Active{{end}}
-                </div>
-                <div class="incident-info">
-                    <span class="incident-check">{{.CheckName}}</span>
-                    <span class="incident-time">{{.StartedAt.Format "Jan 2, 15:04"}}</span>
-                    {{if .EndedAt}}
-                    <span class="incident-duration">Duration: {{.DurationString}}</span>
+        {{if .CheckGroups}}
+            {{range $group, $checks := .CheckGroups}}
+            <div class="check-group">
+                <div class="group-name">{{$group}}</div>
+                <div class="checks-list">
+                    {{range $checks}}
+                    <a href="{{$.BasePath}}/checks/{{.ID}}" class="check-card">
+                        <div class="check-status {{.Status}}"></div>
+                        <div class="check-info">
+                            <div class="check-name">{{.Name}}</div>
+                            <div class="check-url">{{.URL}}</div>
+                        </div>
+                        <div class="check-metrics">
+                            {{if .LastResponseMs}}
+                            <span class="response-time">{{.LastResponseMs}}<small>ms</small></span>
+                            {{else}}
+                            <span class="response-time">—</span>
+                            {{end}}
+                            <span class="uptime">{{printf "%.1f" .UptimePercent}}% uptime</span>
+                            {{if .Sparkline}}
+                            <div class="sparkline">
+                                {{range .Sparkline}}
+                                <div class="spark {{if .}}up{{else}}down{{end}}"></div>
+                                {{end}}
+                            </div>
+                            {{end}}
+                        </div>
+                    </a>
                     {{end}}
                 </div>
             </div>
             {{end}}
+        {{else}}
+        <div class="empty-state">
+            <h3>No checks configured</h3>
+            <p>Add your first check in <a href="{{.BasePath}}/settings">Settings</a></p>
         </div>
-    </div>
-    {{end}}
+        {{end}}
 
-    <div class="last-updated">
-        Last updated: {{.LastUpdated.Format "15:04:05"}}
-    </div>
-</div>
+        {{if .RecentIncidents}}
+        <div class="incidents-section">
+            <h2>Recent Incidents</h2>
+            <div class="incidents-list">
+                {{range .RecentIncidents}}
+                <div class="incident {{if .IsActive}}active{{else}}resolved{{end}}">
+                    <span class="incident-status">{{if .IsActive}}Ongoing{{else}}Resolved{{end}}</span>
+                    <div class="incident-info">
+                        <span class="incident-check">{{.CheckName}}</span>
+                        <span class="incident-time">{{.StartedAt.Format "Jan 2, 15:04"}}</span>
+                        {{if not .IsActive}}
+                        <span class="incident-duration">{{.DurationString}}</span>
+                        {{end}}
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        <div class="last-updated">
+            Last updated {{.LastUpdated.Format "15:04:05"}}
+        </div>
     </main>
     <footer>
-        <p>Sentinel Uptime Monitor</p>
+        Sentinel Uptime Monitor
     </footer>
     <script src="{{.BasePath}}/static/js/app.js"></script>
 </body>
