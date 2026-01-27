@@ -9,14 +9,13 @@
 </head>
 <body>
     <header>
-        <nav>
-            <a href="{{.BasePath}}/" class="logo">SENTINEL</a>
-            <div class="nav-links">
-                <a href="{{.BasePath}}/">Dashboard</a>
-                <a href="{{.BasePath}}/settings">Settings</a>
-                <a href="{{.BasePath}}/logout">Logout</a>
-            </div>
-        </nav>
+        <a href="{{.BasePath}}/" class="logo">SENTINEL</a>
+        <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+        <div class="nav-links">
+            <a href="{{.BasePath}}/">Dashboard</a>
+            <a href="{{.BasePath}}/settings">Settings</a>
+            <a href="{{.BasePath}}/logout">Logout</a>
+        </div>
     </header>
     <main>
         <div class="settings">
@@ -107,39 +106,30 @@
             <section>
                 <h2>Existing Checks</h2>
                 {{if .Checks}}
-                <table class="checks-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>URL</th>
-                            <th>Interval</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{range .Checks}}
-                        <tr>
-                            <td>{{.Name}}</td>
-                            <td class="url-cell">{{.URL}}</td>
-                            <td>{{.IntervalSecs}}s</td>
-                            <td>
-                                {{if .Enabled}}
-                                <span class="badge enabled">Enabled</span>
-                                {{else}}
-                                <span class="badge disabled">Disabled</span>
-                                {{end}}
-                            </td>
-                            <td>
-                                <a href="{{$.BasePath}}/settings/checks/{{.ID}}/edit" class="btn btn-small">Edit</a>
-                                <form action="{{$.BasePath}}/settings/checks/{{.ID}}/delete" method="POST" class="delete-form" onsubmit="return confirm('Delete this check?');">
-                                    <button type="submit" class="btn btn-danger btn-small">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {{end}}
-                    </tbody>
-                </table>
+                <div class="checks-cards">
+                    {{range .Checks}}
+                    <div class="check-card-settings">
+                        <div class="check-card-header">
+                            <span class="check-card-name">{{.Name}}</span>
+                            {{if .Enabled}}
+                            <span class="badge enabled">Enabled</span>
+                            {{else}}
+                            <span class="badge disabled">Disabled</span>
+                            {{end}}
+                        </div>
+                        <div class="check-card-url">{{.URL}}</div>
+                        <div class="check-card-meta">
+                            <span>Interval: {{.IntervalSecs}}s</span>
+                        </div>
+                        <div class="check-card-actions">
+                            <a href="{{$.BasePath}}/settings/checks/{{.ID}}/edit" class="btn btn-small">Edit</a>
+                            <form action="{{$.BasePath}}/settings/checks/{{.ID}}/delete" method="POST" class="delete-form" onsubmit="return confirm('Delete this check?');">
+                                <button type="submit" class="btn btn-danger btn-small">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
                 {{else}}
                 <div class="no-checks">
                     No checks configured yet. Add one above.
