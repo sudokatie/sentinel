@@ -14,7 +14,10 @@ type SQLiteStorage struct {
 }
 
 func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
-	db, err := sql.Open("sqlite", dbPath)
+	// Add busy_timeout to handle concurrent access gracefully
+	// Wait up to 5 seconds for locks to clear before failing
+	connStr := dbPath + "?_busy_timeout=5000"
+	db, err := sql.Open("sqlite", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("opening database: %w", err)
 	}
