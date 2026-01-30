@@ -25,7 +25,7 @@ Sentinel is a single binary that checks your endpoints, tracks response times, s
 
 ```bash
 # Clone and build
-git clone https://github.com/katieblackabee/sentinel.git
+git clone https://github.com/sudokatie/sentinel.git
 cd sentinel
 make build
 
