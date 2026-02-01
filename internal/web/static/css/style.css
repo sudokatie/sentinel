@@ -16,10 +16,10 @@
     --orange: #ff6b35;
     --orange-dim: #cc5529;
     --orange-glow: rgba(255, 107, 53, 0.3);
-    --green: #4ade80;
-    --green-dim: rgba(74, 222, 128, 0.15);
-    --red: #f87171;
-    --red-dim: rgba(248, 113, 113, 0.15);
+    --status-up: #ffffff;
+    --status-up-dim: rgba(255, 255, 255, 0.12);
+    --status-down: #ff4444;
+    --status-down-dim: rgba(255, 68, 68, 0.15);
     --amber: #fbbf24;
 }
 
@@ -193,7 +193,7 @@ footer::before {
     content: 'STATUS: OPERATIONAL';
     position: absolute;
     left: 24px;
-    color: var(--green);
+    color: var(--status-up);
     letter-spacing: 1px;
 }
 
@@ -249,11 +249,11 @@ footer::after {
 }
 
 .status-ok {
-    color: var(--green);
+    color: var(--status-up);
 }
 
 .status-error {
-    color: var(--red);
+    color: var(--status-down);
 }
 
 .uptime-badge {
@@ -352,25 +352,25 @@ footer::after {
 }
 
 .check-status.up {
-    color: var(--green);
+    color: var(--status-up);
 }
 
 .check-status.up::after {
     content: '';
     position: absolute;
     inset: 3px;
-    background: var(--green);
+    background: var(--status-up);
 }
 
 .check-status.down {
-    color: var(--red);
+    color: var(--status-down);
 }
 
 .check-status.down::after {
     content: '';
     position: absolute;
     inset: 3px;
-    background: var(--red);
+    background: var(--status-down);
     animation: pulse 1s infinite;
 }
 
@@ -451,11 +451,11 @@ footer::after {
 }
 
 .spark.up {
-    background: var(--green);
+    background: var(--status-up);
 }
 
 .spark.down {
-    background: var(--red);
+    background: var(--status-down);
 }
 
 /* Incidents */
@@ -483,7 +483,7 @@ footer::after {
     justify-content: center;
     width: 18px;
     height: 18px;
-    background: var(--red);
+    background: var(--status-down);
     color: var(--bg);
     font-size: 12px;
     font-weight: 800;
@@ -507,12 +507,12 @@ footer::after {
 }
 
 .incident.active {
-    border-left: 4px solid var(--red);
-    background: var(--red-dim);
+    border-left: 4px solid var(--status-down);
+    background: var(--status-down-dim);
 }
 
 .incident.resolved {
-    border-left: 4px solid var(--green);
+    border-left: 4px solid var(--status-up);
 }
 
 .incident-status {
@@ -524,11 +524,11 @@ footer::after {
 }
 
 .incident.resolved .incident-status {
-    color: var(--green);
+    color: var(--status-up);
 }
 
 .incident.active .incident-status {
-    color: var(--red);
+    color: var(--status-down);
 }
 
 .incident-info {
@@ -617,12 +617,12 @@ footer::after {
 }
 
 .check-status-large.up {
-    background: var(--green);
+    background: var(--status-up);
     color: var(--bg);
 }
 
 .check-status-large.down {
-    background: var(--red);
+    background: var(--status-down);
     color: var(--bg);
 }
 
@@ -834,15 +834,15 @@ footer::after {
 }
 
 .alert.success {
-    background: var(--green-dim);
-    border-color: var(--green);
-    color: var(--green);
+    background: var(--status-up-dim);
+    border-color: var(--status-up);
+    color: var(--status-up);
 }
 
 .alert.error {
-    background: var(--red-dim);
-    border-color: var(--red);
-    color: var(--red);
+    background: var(--status-down-dim);
+    border-color: var(--status-down);
+    color: var(--status-down);
 }
 
 /* Forms */
@@ -931,12 +931,12 @@ footer::after {
 }
 
 .btn-danger {
-    color: var(--red);
-    border-color: var(--red);
+    color: var(--status-down);
+    border-color: var(--status-down);
 }
 
 .btn-danger:hover {
-    background: var(--red);
+    background: var(--status-down);
     color: var(--bg);
 }
 
@@ -1022,7 +1022,7 @@ footer::after {
 }
 
 .badge.enabled {
-    background: var(--green);
+    background: var(--status-up);
     color: var(--bg);
 }
 

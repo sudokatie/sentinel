@@ -8,8 +8,8 @@ const theme = {
     textDim: '#888888',
     textBright: '#ffffff',
     orange: '#ff6b35',
-    green: '#4ade80',
-    red: '#f87171'
+    statusUp: "#ffffff",
+    statusDown: "#ff4444"
 };
 
 // Auto-refresh
@@ -102,9 +102,9 @@ function drawResponseChart() {
         
         // Bar color based on status
         if (statuses[i] === 'up') {
-            ctx.fillStyle = theme.green;
+            ctx.fillStyle = theme.statusUp;
         } else if (statuses[i] === 'down') {
-            ctx.fillStyle = theme.red;
+            ctx.fillStyle = theme.statusDown;
         } else {
             ctx.fillStyle = theme.textDim;
         }
