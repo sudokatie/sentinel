@@ -5,13 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - Sentinel</title>
-    <link rel="icon" type="image/svg+xml" href="{{.BasePath}}/static/favicon.svg">
     <link rel="stylesheet" href="{{.BasePath}}/static/css/style.css">
 </head>
 <body>
     <header>
-        <a href="{{.BasePath}}/" class="logo">Sentinel</a>
-        <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">///</button>
+        <a href="{{.BasePath}}/" class="logo">SENTINEL</a>
+        <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
         <div class="nav-links">
             <a href="{{.BasePath}}/">Dashboard</a>
             <a href="{{.BasePath}}/settings">Settings</a>
@@ -30,18 +29,18 @@
             {{end}}
 
             <section>
-                <h2>Add New Check</h2>
+                <h2>Add Check</h2>
                 <form action="{{.BasePath}}/settings/checks" method="POST" class="check-form">
                     <div class="form-group">
-                        <label for="name">Check Name</label>
-                        <input type="text" id="name" name="name" required placeholder="API Health">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" required placeholder="My API">
                     </div>
                     <div class="form-group">
-                        <label for="url">Target URL</label>
+                        <label for="url">URL</label>
                         <input type="url" id="url" name="url" required placeholder="https://api.example.com/health">
                     </div>
                     <div class="form-group">
-                        <label for="interval">Interval (Seconds)</label>
+                        <label for="interval">Interval (seconds)</label>
                         <input type="number" id="interval" name="interval" value="3600" min="10" max="86400">
                     </div>
                     <button type="submit" class="btn btn-primary">Add Check</button>
@@ -62,7 +61,7 @@
                     </div>
                     <div class="config-item">
                         <label>Alert Cooldown</label>
-                        <span>{{.AlertConfig.CooldownMinutes}} min</span>
+                        <span>{{.AlertConfig.CooldownMinutes}} minutes</span>
                     </div>
                     <div class="config-item">
                         <label>Email Alerts</label>
@@ -83,7 +82,7 @@
                     </div>
                     {{end}}
                 </div>
-                <p class="config-note">Edit sentinel.yaml to modify alert settings</p>
+                <p class="config-note">Edit sentinel.yaml to change alert settings</p>
             </section>
             {{end}}
 
@@ -100,12 +99,12 @@
                         <span>{{.RetentionConfig.AggregatesDays}} days</span>
                     </div>
                 </div>
-                <p class="config-note">Edit sentinel.yaml to modify retention settings</p>
+                <p class="config-note">Edit sentinel.yaml to change retention settings</p>
             </section>
             {{end}}
 
             <section>
-                <h2>Active Checks</h2>
+                <h2>Existing Checks</h2>
                 {{if .Checks}}
                 <div class="checks-cards">
                     {{range .Checks}}
@@ -113,14 +112,14 @@
                         <div class="check-card-header">
                             <span class="check-card-name">{{.Name}}</span>
                             {{if .Enabled}}
-                            <span class="badge enabled">Active</span>
+                            <span class="badge enabled">Enabled</span>
                             {{else}}
-                            <span class="badge disabled">Inactive</span>
+                            <span class="badge disabled">Disabled</span>
                             {{end}}
                         </div>
                         <div class="check-card-url">{{.URL}}</div>
                         <div class="check-card-meta">
-                            Interval: {{.IntervalSecs}}s
+                            <span>Interval: {{.IntervalSecs}}s</span>
                         </div>
                         <div class="check-card-actions">
                             <a href="{{$.BasePath}}/settings/checks/{{.ID}}/edit" class="btn btn-small">Edit</a>
@@ -133,14 +132,14 @@
                 </div>
                 {{else}}
                 <div class="no-checks">
-                    No checks configured. Add one above.
+                    No checks configured yet. Add one above.
                 </div>
                 {{end}}
             </section>
         </div>
     </main>
     <footer>
-        Uptime Monitor
+        Sentinel Uptime Monitor
     </footer>
     <script src="{{.BasePath}}/static/js/app.js"></script>
 </body>

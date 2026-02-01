@@ -10,19 +10,20 @@
 </head>
 <body>
     <header>
-        <a href="{{.BasePath}}/" class="logo">Sentinel</a>
-        <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">///</button>
-        <div class="nav-links">
-            <a href="{{.BasePath}}/">Dashboard</a>
-            <a href="{{.BasePath}}/settings">Settings</a>
-            <a href="{{.BasePath}}/logout">Logout</a>
-        </div>
+        <nav>
+            <a href="{{.BasePath}}/" class="logo">SENTINEL</a>
+            <div class="nav-links">
+                <a href="{{.BasePath}}/">Dashboard</a>
+                <a href="{{.BasePath}}/settings">Settings</a>
+                <a href="{{.BasePath}}/logout">Logout</a>
+            </div>
+        </nav>
     </header>
     <main>
         {{template "content" .}}
     </main>
     <footer>
-        Uptime Monitor
+        Sentinel Uptime Monitor
     </footer>
     <script src="{{.BasePath}}/static/js/app.js"></script>
 </body>

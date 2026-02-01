@@ -5,13 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Sentinel</title>
-    <link rel="icon" type="image/svg+xml" href="{{.BasePath}}/static/favicon.svg">
     <link rel="stylesheet" href="{{.BasePath}}/static/css/style.css">
 </head>
 <body>
     <header>
-        <a href="{{.BasePath}}/" class="logo">Sentinel</a>
-        <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">///</button>
+        <a href="{{.BasePath}}/" class="logo">SENTINEL</a>
+        <button class="menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
         <div class="nav-links">
             <a href="{{.BasePath}}/">Dashboard</a>
             <a href="{{.BasePath}}/settings">Settings</a>
@@ -22,13 +21,13 @@
         <div class="status-header">
             <h1>
                 {{if .AllOperational}}
-                <span class="status-ok">Systems Operational</span>
+                <span class="status-ok">All Systems Operational</span>
                 {{else}}
                 <span class="status-error">Issues Detected</span>
                 {{end}}
             </h1>
             <div class="uptime-badge">
-                {{printf "%.1f" .OverallUptime}}<small>% Uptime</small>
+                {{printf "%.1f" .OverallUptime}}<small>% uptime</small>
             </div>
         </div>
 
@@ -48,7 +47,7 @@
                             {{if .LastResponseMs}}
                             <span class="response-time">{{.LastResponseMs}}<small>ms</small></span>
                             {{else}}
-                            <span class="response-time">---</span>
+                            <span class="response-time">—</span>
                             {{end}}
                             <span class="uptime">{{printf "%.1f" .UptimePercent}}% uptime</span>
                             {{if .Sparkline}}
@@ -66,7 +65,7 @@
             {{end}}
         {{else}}
         <div class="empty-state">
-            <h3>No Checks Configured</h3>
+            <h3>No checks configured</h3>
             <p>Add your first check in <a href="{{.BasePath}}/settings">Settings</a></p>
         </div>
         {{end}}
@@ -77,7 +76,7 @@
             <div class="incidents-list">
                 {{range .RecentIncidents}}
                 <div class="incident {{if .IsActive}}active{{else}}resolved{{end}}">
-                    <span class="incident-status">{{if .IsActive}}Active{{else}}Resolved{{end}}</span>
+                    <span class="incident-status">{{if .IsActive}}Ongoing{{else}}Resolved{{end}}</span>
                     <div class="incident-info">
                         <span class="incident-check">{{.CheckName}}</span>
                         <span class="incident-time">{{.StartedAt.Format "Jan 2, 15:04"}}</span>
@@ -92,11 +91,11 @@
         {{end}}
 
         <div class="last-updated">
-            Last sync {{.LastUpdated.Format "15:04:05"}}
+            Last updated {{.LastUpdated.Format "15:04:05"}}
         </div>
     </main>
     <footer>
-        Uptime Monitor
+        Sentinel Uptime Monitor
     </footer>
     <script src="{{.BasePath}}/static/js/app.js"></script>
 </body>

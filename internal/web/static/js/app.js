@@ -1,15 +1,15 @@
-// Sentinel - Signal Theme
+// Sentinel - Tactical Theme
 
 const theme = {
-    bg: '#12141c',
-    surface: '#1a1d28',
-    border: '#2a2f3d',
-    text: '#c4c9d4',
-    textDim: '#6b7280',
-    textBright: '#f0f2f5',
-    coral: '#e8846b',
-    mint: '#6bcf9e',
-    rose: '#cf6b8a'
+    bg: '#0d0d0d',
+    surface: '#1a1a1a',
+    border: '#333333',
+    text: '#e0e0e0',
+    textDim: '#888888',
+    textBright: '#ffffff',
+    orange: '#ff6b35',
+    green: '#4ade80',
+    red: '#f87171'
 };
 
 // Auto-refresh
@@ -25,8 +25,8 @@ const theme = {
             setInterval(() => {
                 countdown--;
                 el.textContent = countdown > 0 
-                    ? `Refreshing in ${countdown}s` 
-                    : 'Refreshing...';
+                    ? `NEXT SYNC IN ${countdown}S` 
+                    : 'SYNCHRONIZING...';
             }, 1000);
         }
         
@@ -53,7 +53,7 @@ function drawResponseChart() {
     
     const width = rect.width;
     const height = rect.height;
-    const pad = { top: 24, right: 16, bottom: 24, left: 48 };
+    const pad = { top: 32, right: 20, bottom: 32, left: 56 };
     const chartW = width - pad.left - pad.right;
     const chartH = height - pad.top - pad.bottom;
     
@@ -72,7 +72,7 @@ function drawResponseChart() {
     ctx.lineWidth = 1;
     
     const gridLines = 4;
-    ctx.font = '11px -apple-system, sans-serif';
+    ctx.font = '600 10px Inter, sans-serif';
     ctx.fillStyle = theme.textDim;
     ctx.textAlign = 'right';
     
@@ -81,66 +81,53 @@ function drawResponseChart() {
         const val = Math.round(maxVal - (maxVal / gridLines) * i);
         
         ctx.beginPath();
+        ctx.setLineDash([4, 4]);
         ctx.moveTo(pad.left, y);
         ctx.lineTo(width - pad.right, y);
         ctx.stroke();
+        ctx.setLineDash([]);
         
-        ctx.fillText(val, pad.left - 8, y + 4);
+        ctx.fillText(val + 'MS', pad.left - 10, y + 4);
     }
     
     const stepX = chartW / (values.length - 1);
     
-    // Area gradient
-    ctx.beginPath();
-    ctx.moveTo(pad.left, pad.top + chartH);
+    // Draw bars instead of area
+    const barWidth = Math.max(2, Math.min(8, stepX - 2));
     
     for (let i = 0; i < values.length; i++) {
         const x = pad.left + stepX * i;
-        const y = pad.top + chartH - (values[i] / maxVal * chartH);
-        ctx.lineTo(x, y);
-    }
-    
-    ctx.lineTo(pad.left + chartW, pad.top + chartH);
-    ctx.closePath();
-    
-    const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
-    grad.addColorStop(0, 'rgba(232, 132, 107, 0.25)');
-    grad.addColorStop(1, 'rgba(232, 132, 107, 0)');
-    ctx.fillStyle = grad;
-    ctx.fill();
-    
-    // Line
-    ctx.beginPath();
-    ctx.strokeStyle = theme.coral;
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    
-    for (let i = 0; i < values.length; i++) {
-        const x = pad.left + stepX * i;
-        const y = pad.top + chartH - (values[i] / maxVal * chartH);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    
-    // Failure points
-    for (let i = 0; i < values.length; i++) {
-        if (statuses[i] === 'down') {
-            const x = pad.left + stepX * i;
-            const y = pad.top + chartH - (values[i] / maxVal * chartH);
-            
-            ctx.beginPath();
-            ctx.fillStyle = theme.rose;
-            ctx.arc(x, y, 5, 0, Math.PI * 2);
-            ctx.fill();
+        const barHeight = values[i] / maxVal * chartH;
+        const y = pad.top + chartH - barHeight;
+        
+        // Bar color based on status
+        if (statuses[i] === 'up') {
+            ctx.fillStyle = theme.green;
+        } else if (statuses[i] === 'down') {
+            ctx.fillStyle = theme.red;
+        } else {
+            ctx.fillStyle = theme.textDim;
         }
+        
+        ctx.fillRect(x - barWidth/2, y, barWidth, barHeight);
     }
+    
+    // Border
+    ctx.strokeStyle = theme.border;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize chart when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', drawResponseChart);
+} else {
     drawResponseChart();
-    window.addEventListener('resize', () => {
-        clearTimeout(window._resizeTimer);
-        window._resizeTimer = setTimeout(drawResponseChart, 100);
-    });
+}
+
+// Redraw on resize
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(drawResponseChart, 100);
 });
