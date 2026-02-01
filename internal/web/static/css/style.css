@@ -4,7 +4,8 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-:root {
+/* Dark theme (default) */
+:root, [data-theme="dark"] {
     --bg: #0d0d0d;
     --surface: #1a1a1a;
     --surface-raised: #222222;
@@ -20,6 +21,27 @@
     --status-up-dim: rgba(255, 255, 255, 0.12);
     --status-down: #d97706;
     --status-down-dim: rgba(217, 119, 6, 0.15);
+    --grid-opacity: 0.08;
+}
+
+/* Light theme */
+[data-theme="light"] {
+    --bg: #f5f3f0;
+    --surface: #ffffff;
+    --surface-raised: #fafafa;
+    --border: #d4d0c8;
+    --border-accent: #b8b4aa;
+    --text: #2d2d2d;
+    --text-dim: #666666;
+    --text-bright: #0d0d0d;
+    --orange: #ff6b35;
+    --orange-dim: #e85a25;
+    --orange-glow: rgba(255, 107, 53, 0.2);
+    --status-up: #0d0d0d;
+    --status-up-dim: rgba(13, 13, 13, 0.08);
+    --status-down: #b45309;
+    --status-down-dim: rgba(180, 83, 9, 0.1);
+    --grid-opacity: 0.04;
 }
 
 * {
@@ -53,7 +75,7 @@ body::before {
         linear-gradient(var(--border) 1px, transparent 1px),
         linear-gradient(90deg, var(--border) 1px, transparent 1px);
     background-size: 60px 60px;
-    opacity: 0.08;
+    opacity: var(--grid-opacity);
     pointer-events: none;
     z-index: 0;
 }
@@ -1290,4 +1312,52 @@ footer::after {
     .login-container h1 {
         font-size: 24px;
     }
+}
+
+/* Theme Toggle */
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+
+.theme-toggle label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+}
+
+.theme-switch {
+    display: flex;
+    gap: 4px;
+}
+
+.theme-switch button {
+    padding: 8px 16px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.theme-switch button:hover {
+    border-color: var(--text-dim);
+    color: var(--text);
+}
+
+.theme-switch button.active {
+    background: var(--orange);
+    border-color: var(--orange);
+    color: var(--bg);
 }

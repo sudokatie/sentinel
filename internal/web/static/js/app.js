@@ -1,16 +1,56 @@
 // Sentinel - Tactical Theme
 
-const theme = {
-    bg: '#0d0d0d',
-    surface: '#1a1a1a',
-    border: '#333333',
-    text: '#e0e0e0',
-    textDim: '#888888',
-    textBright: '#ffffff',
-    orange: '#ff6b35',
-    statusUp: '#ffffff',
-    statusDown: '#d97706'
+// Theme management
+const Theme = {
+    STORAGE_KEY: 'sentinel-theme',
+    
+    init() {
+        const saved = localStorage.getItem(this.STORAGE_KEY);
+        if (saved) {
+            this.set(saved);
+        }
+        this.updateButtons();
+    },
+    
+    set(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem(this.STORAGE_KEY, theme);
+        this.updateButtons();
+    },
+    
+    get() {
+        return document.documentElement.getAttribute('data-theme') || 'dark';
+    },
+    
+    updateButtons() {
+        const current = this.get();
+        document.querySelectorAll('.theme-switch button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === current);
+        });
+    }
 };
+
+// Initialize theme on load
+Theme.init();
+
+// Expose for inline onclick
+window.setTheme = (theme) => Theme.set(theme);
+
+// Chart colors based on theme
+function getThemeColors() {
+    const style = getComputedStyle(document.documentElement);
+    return {
+        bg: style.getPropertyValue('--bg').trim(),
+        surface: style.getPropertyValue('--surface').trim(),
+        border: style.getPropertyValue('--border').trim(),
+        text: style.getPropertyValue('--text').trim(),
+        textDim: style.getPropertyValue('--text-dim').trim(),
+        textBright: style.getPropertyValue('--text-bright').trim(),
+        orange: style.getPropertyValue('--orange').trim(),
+        statusUp: style.getPropertyValue('--status-up').trim(),
+        statusDown: style.getPropertyValue('--status-down').trim()
+    };
+}
 
 // Auto-refresh
 (function() {
@@ -39,6 +79,7 @@ function drawResponseChart() {
     const canvas = document.getElementById('responseChart');
     if (!canvas || typeof chartData === 'undefined') return;
     
+    const theme = getThemeColors();
     const ctx = canvas.getContext('2d');
     const { values, statuses } = chartData;
     
@@ -92,7 +133,7 @@ function drawResponseChart() {
     
     const stepX = chartW / (values.length - 1);
     
-    // Draw bars instead of area
+    // Draw bars
     const barWidth = Math.max(2, Math.min(8, stepX - 2));
     
     for (let i = 0; i < values.length; i++) {
@@ -125,9 +166,19 @@ if (document.readyState === 'loading') {
     drawResponseChart();
 }
 
-// Redraw on resize
+// Redraw on resize or theme change
 let resizeTimeout;
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(drawResponseChart, 100);
 });
+
+// Watch for theme changes and redraw chart
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+            setTimeout(drawResponseChart, 50);
+        }
+    });
+});
+observer.observe(document.documentElement, { attributes: true });

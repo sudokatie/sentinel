@@ -22,6 +22,14 @@
         <div class="settings">
             <h1>Settings</h1>
 
+            <div class="theme-toggle">
+                <label>Theme</label>
+                <div class="theme-switch">
+                    <button data-theme="dark" onclick="setTheme('dark')">Dark</button>
+                    <button data-theme="light" onclick="setTheme('light')">Light</button>
+                </div>
+            </div>
+
             {{if .Message}}
             <div class="alert success">{{.Message}}</div>
             {{end}}
