@@ -18,9 +18,8 @@
     --orange-glow: rgba(255, 107, 53, 0.3);
     --status-up: #ffffff;
     --status-up-dim: rgba(255, 255, 255, 0.12);
-    --status-down: #ff4444;
-    --status-down-dim: rgba(255, 68, 68, 0.15);
-    --amber: #fbbf24;
+    --status-down: #d97706;
+    --status-down-dim: rgba(217, 119, 6, 0.15);
 }
 
 * {

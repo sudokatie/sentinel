@@ -8,8 +8,8 @@ const theme = {
     textDim: '#888888',
     textBright: '#ffffff',
     orange: '#ff6b35',
-    statusUp: "#ffffff",
-    statusDown: "#ff4444"
+    statusUp: '#ffffff',
+    statusDown: '#d97706'
 };
 
 // Auto-refresh
