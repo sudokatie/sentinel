@@ -33,6 +33,7 @@ type AlertsConfig struct {
 	ConsecutiveFailures  int           `yaml:"consecutive_failures"`
 	RecoveryNotification bool          `yaml:"recovery_notification"`
 	CooldownMinutes      int           `yaml:"cooldown_minutes"`
+	SSLExpiryDays        int           `yaml:"ssl_expiry_days"` // Alert when SSL cert expires within X days (0 = disabled)
 	Email                EmailConfig   `yaml:"email"`
 	Slack                SlackConfig   `yaml:"slack"`
 	Discord              DiscordConfig `yaml:"discord"`

@@ -35,13 +35,16 @@ func (c *Check) IsPending() bool {
 }
 
 type CheckResult struct {
-	ID             int64     `json:"id"`
-	CheckID        int64     `json:"check_id"`
-	Status         string    `json:"status"` // "up" or "down"
-	StatusCode     int       `json:"status_code"`
-	ResponseTimeMs int       `json:"response_time_ms"`
-	ErrorMessage   string    `json:"error_message,omitempty"`
-	CheckedAt      time.Time `json:"checked_at"`
+	ID             int64      `json:"id"`
+	CheckID        int64      `json:"check_id"`
+	Status         string     `json:"status"` // "up" or "down"
+	StatusCode     int        `json:"status_code"`
+	ResponseTimeMs int        `json:"response_time_ms"`
+	ErrorMessage   string     `json:"error_message,omitempty"`
+	CheckedAt      time.Time  `json:"checked_at"`
+	SSLExpiresAt   *time.Time `json:"ssl_expires_at,omitempty"`
+	SSLDaysLeft    int        `json:"ssl_days_left,omitempty"`
+	SSLIssuer      string     `json:"ssl_issuer,omitempty"`
 }
 
 func (r *CheckResult) IsUp() bool {

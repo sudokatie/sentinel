@@ -14,6 +14,7 @@ Sentinel is a single binary that checks your endpoints, tracks response times, s
 
 - HTTP endpoint monitoring with configurable intervals
 - Response time tracking and uptime statistics  
+- SSL certificate monitoring (expiry alerts, issuer info)
 - Multi-channel alerts: Email, Slack, Discord (with cooldown so you don't get spammed)
 - Public status pages (share uptime with your users)
 - Terminal-aesthetic dashboard (because I have a type)
@@ -71,6 +72,7 @@ alerts:
   consecutive_failures: 2      # Alert after 2 failures (not just one hiccup)
   recovery_notification: true  # Tell me when it's back, too
   cooldown_minutes: 5          # Don't spam me
+  ssl_expiry_days: 30          # Alert when SSL cert expires within 30 days
   email:
     enabled: true
     smtp_host: smtp.gmail.com

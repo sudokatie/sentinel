@@ -24,6 +24,9 @@ func ProcessResult(store storage.Storage, alerter Alerter, check *storage.Check,
 		Status:         status,
 		StatusCode:     response.StatusCode,
 		ResponseTimeMs: response.ResponseTimeMs,
+		SSLExpiresAt:   response.SSLExpiresAt,
+		SSLDaysLeft:    response.SSLDaysLeft,
+		SSLIssuer:      response.SSLIssuer,
 	}
 	if response.Error != nil {
 		result.ErrorMessage = response.Error.Error()

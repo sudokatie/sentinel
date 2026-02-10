@@ -289,3 +289,52 @@ func TestHTTPCheckerNoRetryWhenDisabled(t *testing.T) {
 		t.Errorf("expected only 1 call when retry disabled, got %d", callCount)
 	}
 }
+
+func TestHTTPCheckerSSLFieldsNilForHTTP(t *testing.T) {
+	// HTTP (non-TLS) connections should have nil SSL fields
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	checker := newTestChecker()
+	resp := checker.Execute(&CheckRequest{
+		URL:            server.URL,
+		Timeout:        5 * time.Second,
+		ExpectedStatus: 200,
+	})
+
+	if resp.SSLExpiresAt != nil {
+		t.Error("expected SSLExpiresAt to be nil for HTTP")
+	}
+	if resp.SSLDaysLeft != 0 {
+		t.Error("expected SSLDaysLeft to be 0 for HTTP")
+	}
+	if resp.SSLIssuer != "" {
+		t.Error("expected SSLIssuer to be empty for HTTP")
+	}
+}
+
+func TestHTTPCheckerSSLFieldsForHTTPS(t *testing.T) {
+	// Test against a real HTTPS URL (google.com should have valid cert)
+	checker := newTestChecker()
+	resp := checker.Execute(&CheckRequest{
+		URL:            "https://www.google.com",
+		Timeout:        10 * time.Second,
+		ExpectedStatus: 200,
+	})
+
+	if resp.Error != nil {
+		t.Skipf("skipping HTTPS test (network unavailable): %v", resp.Error)
+	}
+
+	if resp.SSLExpiresAt == nil {
+		t.Error("expected SSLExpiresAt to be set for HTTPS")
+	}
+	if resp.SSLDaysLeft < 0 {
+		t.Error("expected SSLDaysLeft to be positive for valid cert")
+	}
+	if resp.SSLIssuer == "" {
+		t.Error("expected SSLIssuer to be set for HTTPS")
+	}
+}

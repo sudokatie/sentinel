@@ -109,6 +109,16 @@ func (s *SQLiteStorage) Migrate() error {
 		}
 	}
 
+	// Add SSL columns to check_results (will fail silently if columns exist)
+	sslMigrations := []string{
+		`ALTER TABLE check_results ADD COLUMN ssl_expires_at DATETIME`,
+		`ALTER TABLE check_results ADD COLUMN ssl_days_left INTEGER`,
+		`ALTER TABLE check_results ADD COLUMN ssl_issuer TEXT`,
+	}
+	for _, m := range sslMigrations {
+		s.db.Exec(m) // Ignore errors (column already exists)
+	}
+
 	return nil
 }
 
@@ -289,9 +299,10 @@ func (s *SQLiteStorage) scanChecks(rows *sql.Rows) ([]*Check, error) {
 
 func (s *SQLiteStorage) SaveResult(result *CheckResult) error {
 	res, err := s.db.Exec(`
-		INSERT INTO check_results (check_id, status, status_code, response_time_ms, error_message, checked_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, result.CheckID, result.Status, result.StatusCode, result.ResponseTimeMs, result.ErrorMessage, time.Now())
+		INSERT INTO check_results (check_id, status, status_code, response_time_ms, error_message, checked_at, ssl_expires_at, ssl_days_left, ssl_issuer)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, result.CheckID, result.Status, result.StatusCode, result.ResponseTimeMs, result.ErrorMessage, time.Now(),
+		result.SSLExpiresAt, result.SSLDaysLeft, result.SSLIssuer)
 	if err != nil {
 		return fmt.Errorf("inserting result: %w", err)
 	}

@@ -22,6 +22,10 @@ type CheckResponse struct {
 	StatusCode     int
 	ResponseTimeMs int
 	Error          error
+	// SSL Certificate info
+	SSLExpiresAt   *time.Time
+	SSLDaysLeft    int
+	SSLIssuer      string
 }
 
 func NewHTTPChecker() *HTTPChecker {
@@ -89,6 +93,18 @@ func (h *HTTPChecker) doRequest(req *CheckRequest) *CheckResponse {
 	defer resp.Body.Close()
 
 	response.StatusCode = resp.StatusCode
+
+	// Extract SSL certificate info if available
+	if resp.TLS != nil && len(resp.TLS.PeerCertificates) > 0 {
+		cert := resp.TLS.PeerCertificates[0]
+		response.SSLExpiresAt = &cert.NotAfter
+		response.SSLDaysLeft = int(time.Until(cert.NotAfter).Hours() / 24)
+		response.SSLIssuer = cert.Issuer.CommonName
+		if response.SSLIssuer == "" && len(cert.Issuer.Organization) > 0 {
+			response.SSLIssuer = cert.Issuer.Organization[0]
+		}
+	}
+
 	return response
 }
 
