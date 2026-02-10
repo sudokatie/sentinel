@@ -141,6 +141,7 @@ func serve() {
 		ConsecutiveFailures: cfg.Alerts.ConsecutiveFailures,
 		RetentionDays:       cfg.Retention.ResultsDays,
 		AggregatesDays:      cfg.Retention.AggregatesDays,
+		SSLExpiryDays:       cfg.Alerts.SSLExpiryDays,
 	})
 
 	// Start scheduler

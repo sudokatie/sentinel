@@ -25,6 +25,7 @@ type SchedulerConfig struct {
 	ConsecutiveFailures int
 	RetentionDays       int
 	AggregatesDays      int
+	SSLExpiryDays       int
 }
 
 type scheduledCheck struct {
@@ -219,6 +220,19 @@ func (s *Scheduler) executeCheck(check *storage.Check, checker *HTTPChecker) {
 	// Process the result
 	if err := ProcessResult(s.storage, s.alerter, current, response, s.config.ConsecutiveFailures); err != nil {
 		fmt.Printf("error processing result for %s: %v\n", current.Name, err)
+	}
+
+	// Check SSL expiry and alert if necessary
+	if s.config.SSLExpiryDays > 0 && response.SSLExpiresAt != nil {
+		if response.SSLDaysLeft <= s.config.SSLExpiryDays {
+			if sslAlerter, ok := s.alerter.(interface {
+				SendSSLExpiryAlert(*storage.Check, int, time.Time) error
+			}); ok {
+				if err := sslAlerter.SendSSLExpiryAlert(current, response.SSLDaysLeft, *response.SSLExpiresAt); err != nil {
+					fmt.Printf("error sending SSL expiry alert for %s: %v\n", current.Name, err)
+				}
+			}
+		}
 	}
 }
 
