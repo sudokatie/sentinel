@@ -531,14 +531,14 @@ func TestLogAlertNoIncident(t *testing.T) {
 
 func TestNewEmailSender(t *testing.T) {
 	cfg := &config.EmailConfig{
-		Enabled:     true,
-		SMTPHost:    "smtp.example.com",
-		SMTPPort:    587,
-		SMTPUser:    "user@example.com",
+		Enabled:      true,
+		SMTPHost:     "smtp.example.com",
+		SMTPPort:     587,
+		SMTPUser:     "user@example.com",
 		SMTPPassword: "password",
-		SMTPTLS:     true,
-		FromAddress: "sender@example.com",
-		ToAddresses: []string{"recipient@example.com"},
+		SMTPTLS:      true,
+		FromAddress:  "sender@example.com",
+		ToAddresses:  []string{"recipient@example.com"},
 	}
 
 	sender := NewEmailSender(cfg)

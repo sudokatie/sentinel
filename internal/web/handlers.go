@@ -40,12 +40,12 @@ type CheckDetailData struct {
 }
 
 type SettingsData struct {
-	Title         string
-	BasePath      string
-	Checks        []*storage.Check
-	Message       string
-	Error         string
-	AlertConfig   *AlertConfigView
+	Title           string
+	BasePath        string
+	Checks          []*storage.Check
+	Message         string
+	Error           string
+	AlertConfig     *AlertConfigView
 	RetentionConfig *RetentionConfigView
 }
 

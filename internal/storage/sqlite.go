@@ -729,7 +729,7 @@ func (s *SQLiteStorage) AggregateResults(olderThan time.Time) error {
 			}
 
 			hour, _ := time.Parse("2006-01-02 15:04:05", hourStr)
-			
+
 			agg := &HourlyAggregate{
 				CheckID:       check.ID,
 				Hour:          hour,

@@ -29,11 +29,11 @@ type SlackMessage struct {
 }
 
 type SlackAttachment struct {
-	Color    string `json:"color"`
-	Title    string `json:"title"`
-	Text     string `json:"text"`
-	Footer   string `json:"footer"`
-	Ts       int64  `json:"ts"`
+	Color  string `json:"color"`
+	Title  string `json:"title"`
+	Text   string `json:"text"`
+	Footer string `json:"footer"`
+	Ts     int64  `json:"ts"`
 }
 
 // DiscordMessage is the Discord webhook payload
@@ -43,11 +43,11 @@ type DiscordMessage struct {
 }
 
 type DiscordEmbed struct {
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	Color       int          `json:"color"`
+	Title       string        `json:"title"`
+	Description string        `json:"description"`
+	Color       int           `json:"color"`
 	Footer      DiscordFooter `json:"footer"`
-	Timestamp   string       `json:"timestamp"`
+	Timestamp   string        `json:"timestamp"`
 }
 
 type DiscordFooter struct {
@@ -70,7 +70,7 @@ func NewDiscordSender(cfg *config.DiscordConfig) *DiscordSender {
 
 func (s *SlackSender) Send(alert *Alert) error {
 	msg := s.buildMessage(alert)
-	
+
 	body, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("marshaling slack message: %w", err)

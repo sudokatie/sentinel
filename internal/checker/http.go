@@ -23,9 +23,9 @@ type CheckResponse struct {
 	ResponseTimeMs int
 	Error          error
 	// SSL Certificate info
-	SSLExpiresAt   *time.Time
-	SSLDaysLeft    int
-	SSLIssuer      string
+	SSLExpiresAt *time.Time
+	SSLDaysLeft  int
+	SSLIssuer    string
 }
 
 func NewHTTPChecker() *HTTPChecker {
