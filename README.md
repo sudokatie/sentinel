@@ -14,7 +14,7 @@ Sentinel is a single binary that checks your endpoints, tracks response times, s
 
 - HTTP endpoint monitoring with configurable intervals
 - Response time tracking and uptime statistics  
-- Email alerts on downtime and recovery (with cooldown so you don't get spammed)
+- Multi-channel alerts: Email, Slack, Discord (with cooldown so you don't get spammed)
 - Terminal-aesthetic dashboard (because I have a type)
 - SQLite storage (zero configuration, just works)
 - Single binary deployment (download, run, done)
@@ -80,6 +80,12 @@ alerts:
     from_address: sentinel@yoursite.com
     to_addresses:
       - alerts@yoursite.com
+  slack:
+    enabled: true
+    webhook_url: https://hooks.slack.com/services/T00/B00/xxx
+  discord:
+    enabled: true
+    webhook_url: https://discord.com/api/webhooks/123/abc
 
 retention:
   results_days: 7              # Raw data kept for 7 days
@@ -109,6 +115,10 @@ Because putting passwords in config files is embarrassing:
 - `SENTINEL_SMTP_FROM` - From address for alerts
 - `SENTINEL_SMTP_TO` - Comma-separated recipient addresses
 - `SENTINEL_EMAIL_ENABLED` - Enable email alerts (true/false)
+- `SENTINEL_SLACK_ENABLED` - Enable Slack alerts (true/false)
+- `SENTINEL_SLACK_WEBHOOK` - Slack incoming webhook URL
+- `SENTINEL_DISCORD_ENABLED` - Enable Discord alerts (true/false)
+- `SENTINEL_DISCORD_WEBHOOK` - Discord webhook URL
 
 ## API
 

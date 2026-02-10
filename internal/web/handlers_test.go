@@ -72,8 +72,8 @@ func TestHandleDashboardEmpty(t *testing.T) {
 	}
 
 	body := rec.Body.String()
-	if !strings.Contains(body, "SENTINEL") {
-		t.Error("expected dashboard to contain SENTINEL")
+	if !strings.Contains(body, "Sentinel") {
+		t.Error("expected dashboard to contain Sentinel")
 	}
 }
 

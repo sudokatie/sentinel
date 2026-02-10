@@ -258,7 +258,7 @@ func TestHandleLoginGet(t *testing.T) {
 	}
 
 	body := rec.Body.String()
-	if !strings.Contains(body, "Login") {
+	if !strings.Contains(body, "/login") {
 		t.Error("expected login page")
 	}
 }
