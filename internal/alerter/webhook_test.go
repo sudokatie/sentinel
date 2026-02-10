@@ -225,3 +225,83 @@ func TestDiscordSender_SendError(t *testing.T) {
 		t.Fatal("expected error for 500 response")
 	}
 }
+
+func TestSlackSender_SSLExpiryAlert(t *testing.T) {
+	var receivedBody []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	sender := NewSlackSender(&config.SlackConfig{
+		Enabled:    true,
+		WebhookURL: server.URL,
+	})
+
+	alert := &Alert{
+		Type: "ssl_expiry",
+		Check: &storage.Check{
+			Name: "Secure API",
+			URL:  "https://api.example.com",
+		},
+		Error:     "SSL certificate expires in 15 days (on Mar 1, 2026)",
+		Timestamp: time.Now(),
+	}
+
+	err := sender.Send(alert)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	var msg SlackMessage
+	if err := json.Unmarshal(receivedBody, &msg); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if msg.Attachments[0].Color != "warning" {
+		t.Errorf("expected color warning, got %s", msg.Attachments[0].Color)
+	}
+	if msg.Attachments[0].Title != "⚠️ SSL EXPIRING: Secure API" {
+		t.Errorf("unexpected title: %s", msg.Attachments[0].Title)
+	}
+}
+
+func TestDiscordSender_SSLExpiryAlert(t *testing.T) {
+	var receivedBody []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	sender := NewDiscordSender(&config.DiscordConfig{
+		Enabled:    true,
+		WebhookURL: server.URL,
+	})
+
+	alert := &Alert{
+		Type: "ssl_expiry",
+		Check: &storage.Check{
+			Name: "Secure API",
+			URL:  "https://api.example.com",
+		},
+		Error:     "SSL certificate expires in 15 days",
+		Timestamp: time.Now(),
+	}
+
+	err := sender.Send(alert)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	var msg DiscordMessage
+	if err := json.Unmarshal(receivedBody, &msg); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	// Yellow color for warning
+	if msg.Embeds[0].Color != 16776960 {
+		t.Errorf("expected color 16776960, got %d", msg.Embeds[0].Color)
+	}
+}
