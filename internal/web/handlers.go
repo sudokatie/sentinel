@@ -113,10 +113,20 @@ func (s *Server) HandleDashboard(c echo.Context) error {
 			sparkline[len(results)-1-i] = r.Status == "up"
 		}
 
+		// Get SSL info from most recent result
+		var sslDaysLeft int
+		var sslExpiresDate string
+		if len(results) > 0 && results[0].SSLExpiresAt != nil {
+			sslDaysLeft = results[0].SSLDaysLeft
+			sslExpiresDate = results[0].SSLExpiresAt.Format("Jan 2, 2006")
+		}
+
 		cws := &CheckWithStatus{
-			Check:         check,
-			UptimePercent: uptimePercent,
-			Sparkline:     sparkline,
+			Check:          check,
+			UptimePercent:  uptimePercent,
+			Sparkline:      sparkline,
+			SSLDaysLeft:    sslDaysLeft,
+			SSLExpiresDate: sslExpiresDate,
 		}
 
 		// Group by first tag or "default"
