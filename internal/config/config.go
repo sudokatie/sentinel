@@ -30,10 +30,22 @@ type DatabaseConfig struct {
 }
 
 type AlertsConfig struct {
-	ConsecutiveFailures  int         `yaml:"consecutive_failures"`
-	RecoveryNotification bool        `yaml:"recovery_notification"`
-	CooldownMinutes      int         `yaml:"cooldown_minutes"`
-	Email                EmailConfig `yaml:"email"`
+	ConsecutiveFailures  int           `yaml:"consecutive_failures"`
+	RecoveryNotification bool          `yaml:"recovery_notification"`
+	CooldownMinutes      int           `yaml:"cooldown_minutes"`
+	Email                EmailConfig   `yaml:"email"`
+	Slack                SlackConfig   `yaml:"slack"`
+	Discord              DiscordConfig `yaml:"discord"`
+}
+
+type SlackConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	WebhookURL string `yaml:"webhook_url"`
+}
+
+type DiscordConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	WebhookURL string `yaml:"webhook_url"`
 }
 
 type EmailConfig struct {

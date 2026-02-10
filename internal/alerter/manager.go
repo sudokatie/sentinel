@@ -12,6 +12,8 @@ type Manager struct {
 	config  *config.AlertsConfig
 	storage storage.Storage
 	email   *EmailSender
+	slack   *SlackSender
+	discord *DiscordSender
 }
 
 type Alert struct {
@@ -30,6 +32,14 @@ func NewManager(cfg *config.AlertsConfig, store storage.Storage) *Manager {
 
 	if cfg.Email.Enabled {
 		m.email = NewEmailSender(&cfg.Email)
+	}
+
+	if cfg.Slack.Enabled {
+		m.slack = NewSlackSender(&cfg.Slack)
+	}
+
+	if cfg.Discord.Enabled {
+		m.discord = NewDiscordSender(&cfg.Discord)
 	}
 
 	return m
@@ -77,6 +87,26 @@ func (m *Manager) sendAlert(alert *Alert) error {
 			m.logAlert(alert, "email", false, err.Error())
 		} else {
 			m.logAlert(alert, "email", true, "")
+		}
+	}
+
+	// Send via Slack if enabled
+	if m.slack != nil {
+		if err := m.slack.Send(alert); err != nil {
+			lastErr = err
+			m.logAlert(alert, "slack", false, err.Error())
+		} else {
+			m.logAlert(alert, "slack", true, "")
+		}
+	}
+
+	// Send via Discord if enabled
+	if m.discord != nil {
+		if err := m.discord.Send(alert); err != nil {
+			lastErr = err
+			m.logAlert(alert, "discord", false, err.Error())
+		} else {
+			m.logAlert(alert, "discord", true, "")
 		}
 	}
 
