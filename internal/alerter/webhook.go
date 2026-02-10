@@ -98,11 +98,12 @@ func (s *SlackSender) Send(alert *Alert) error {
 func (s *SlackSender) buildMessage(alert *Alert) *SlackMessage {
 	var color, title, text string
 
-	if alert.Type == "down" {
+	switch alert.Type {
+	case "down":
 		color = "danger" // red
 		title = fmt.Sprintf("🔴 DOWN: %s", alert.Check.Name)
 		text = fmt.Sprintf("*URL:* %s\n*Error:* %s", alert.Check.URL, alert.Error)
-	} else {
+	case "recovery":
 		color = "good" // green
 		title = fmt.Sprintf("✅ RECOVERED: %s", alert.Check.Name)
 		duration := "unknown"
@@ -110,6 +111,14 @@ func (s *SlackSender) buildMessage(alert *Alert) *SlackMessage {
 			duration = alert.Incident.DurationString()
 		}
 		text = fmt.Sprintf("*URL:* %s\n*Downtime:* %s", alert.Check.URL, duration)
+	case "ssl_expiry":
+		color = "warning" // yellow
+		title = fmt.Sprintf("⚠️ SSL EXPIRING: %s", alert.Check.Name)
+		text = fmt.Sprintf("*URL:* %s\n*Warning:* %s", alert.Check.URL, alert.Error)
+	default:
+		color = "danger"
+		title = fmt.Sprintf("Alert: %s", alert.Check.Name)
+		text = alert.Error
 	}
 
 	return &SlackMessage{
@@ -157,11 +166,12 @@ func (d *DiscordSender) buildMessage(alert *Alert) *DiscordMessage {
 	var color int
 	var title, description string
 
-	if alert.Type == "down" {
+	switch alert.Type {
+	case "down":
 		color = 15158332 // red (#E74C3C)
 		title = fmt.Sprintf("🔴 DOWN: %s", alert.Check.Name)
 		description = fmt.Sprintf("**URL:** %s\n**Error:** %s", alert.Check.URL, alert.Error)
-	} else {
+	case "recovery":
 		color = 3066993 // green (#2ECC71)
 		title = fmt.Sprintf("✅ RECOVERED: %s", alert.Check.Name)
 		duration := "unknown"
@@ -169,6 +179,14 @@ func (d *DiscordSender) buildMessage(alert *Alert) *DiscordMessage {
 			duration = alert.Incident.DurationString()
 		}
 		description = fmt.Sprintf("**URL:** %s\n**Downtime:** %s", alert.Check.URL, duration)
+	case "ssl_expiry":
+		color = 16776960 // yellow (#FFFF00)
+		title = fmt.Sprintf("⚠️ SSL EXPIRING: %s", alert.Check.Name)
+		description = fmt.Sprintf("**URL:** %s\n**Warning:** %s", alert.Check.URL, alert.Error)
+	default:
+		color = 15158332
+		title = fmt.Sprintf("Alert: %s", alert.Check.Name)
+		description = alert.Error
 	}
 
 	return &DiscordMessage{

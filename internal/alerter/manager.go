@@ -72,6 +72,21 @@ func (m *Manager) SendRecoveryAlert(check *storage.Check, incident *storage.Inci
 	return m.sendAlert(alert)
 }
 
+func (m *Manager) SendSSLExpiryAlert(check *storage.Check, daysLeft int, expiresAt time.Time) error {
+	if m.config.SSLExpiryDays == 0 {
+		return nil // SSL alerts disabled
+	}
+
+	alert := &Alert{
+		Type:      "ssl_expiry",
+		Check:     check,
+		Error:     fmt.Sprintf("SSL certificate expires in %d days (on %s)", daysLeft, expiresAt.Format("Jan 2, 2006")),
+		Timestamp: time.Now(),
+	}
+
+	return m.sendAlert(alert)
+}
+
 func (m *Manager) sendAlert(alert *Alert) error {
 	// Check cooldown
 	if !m.shouldSendAlert(alert) {
