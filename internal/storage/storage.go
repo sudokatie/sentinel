@@ -12,6 +12,7 @@ type Storage interface {
 	GetCheckByURL(url string) (*Check, error)
 	ListChecks() ([]*Check, error)
 	ListEnabledChecks() ([]*Check, error)
+	ListChecksByTag(tag string) ([]*Check, error)
 	UpdateCheck(check *Check) error
 	DeleteCheck(id int64) error
 

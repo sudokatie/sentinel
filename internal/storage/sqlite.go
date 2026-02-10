@@ -187,6 +187,25 @@ func (s *SQLiteStorage) ListEnabledChecks() ([]*Check, error) {
 	return s.scanChecks(rows)
 }
 
+func (s *SQLiteStorage) ListChecksByTag(tag string) ([]*Check, error) {
+	// Get all enabled checks and filter by tag in Go (SQLite JSON support is limited)
+	checks, err := s.ListEnabledChecks()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*Check
+	for _, check := range checks {
+		for _, t := range check.Tags {
+			if t == tag {
+				result = append(result, check)
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
 func (s *SQLiteStorage) UpdateCheck(check *Check) error {
 	tagsJSON, err := json.Marshal(check.Tags)
 	if err != nil {

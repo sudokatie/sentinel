@@ -574,3 +574,51 @@ func TestTemplateRender(t *testing.T) {
 		t.Error("expected basePath to be set")
 	}
 }
+
+func TestHandleStatusPage(t *testing.T) {
+	server, store := setupTestServerWithTemplates(t)
+
+	// Create a check with a tag
+	check := &storage.Check{
+		Name:           "API Server",
+		URL:            "https://api.example.com",
+		IntervalSecs:   30,
+		TimeoutSecs:    10,
+		ExpectedStatus: 200,
+		Enabled:        true,
+		Tags:           []string{"public", "api"},
+	}
+	if err := store.CreateCheck(check); err != nil {
+		t.Fatalf("failed to create check: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/status/public", nil)
+	rec := httptest.NewRecorder()
+
+	server.echo.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", rec.Code)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "API Server") {
+		t.Error("expected status page to contain check name")
+	}
+	if !strings.Contains(body, "public Status") {
+		t.Error("expected status page to contain slug in title")
+	}
+}
+
+func TestHandleStatusPageNotFound(t *testing.T) {
+	server, _ := setupTestServerWithTemplates(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/status/nonexistent", nil)
+	rec := httptest.NewRecorder()
+
+	server.echo.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d", rec.Code)
+	}
+}

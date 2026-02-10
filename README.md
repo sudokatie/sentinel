@@ -15,6 +15,7 @@ Sentinel is a single binary that checks your endpoints, tracks response times, s
 - HTTP endpoint monitoring with configurable intervals
 - Response time tracking and uptime statistics  
 - Multi-channel alerts: Email, Slack, Discord (with cooldown so you don't get spammed)
+- Public status pages (share uptime with your users)
 - Terminal-aesthetic dashboard (because I have a type)
 - SQLite storage (zero configuration, just works)
 - Single binary deployment (download, run, done)
@@ -119,6 +120,37 @@ Because putting passwords in config files is embarrassing:
 - `SENTINEL_SLACK_WEBHOOK` - Slack incoming webhook URL
 - `SENTINEL_DISCORD_ENABLED` - Enable Discord alerts (true/false)
 - `SENTINEL_DISCORD_WEBHOOK` - Discord webhook URL
+
+## Public Status Pages
+
+Share your service status with users without giving them admin access.
+
+Status pages are keyed by tag. Any check tagged with `production` is visible at `/status/production`.
+
+```yaml
+checks:
+  - name: API Server
+    url: https://api.example.com/health
+    tags:
+      - production  # Visible at /status/production
+      - api
+
+  - name: Web App
+    url: https://app.example.com
+    tags:
+      - production  # Also visible at /status/production
+      - frontend
+```
+
+Then share `https://yoursite.com/status/production` with your users.
+
+The status page shows:
+- Overall status (operational or degraded)
+- Aggregate uptime percentage
+- Individual service status with response times
+- 24-hour sparkline for each service
+
+No login required. No branding (yet).
 
 ## API
 

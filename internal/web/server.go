@@ -96,6 +96,9 @@ func (s *Server) registerRoutes() {
 	// Health check (public)
 	s.echo.GET("/api/health", s.HandleHealth)
 
+	// Public status pages
+	s.echo.GET("/status/:slug", s.handleStatusPage)
+
 	// Protected routes
 	if s.auth != nil {
 		// Pages with auth

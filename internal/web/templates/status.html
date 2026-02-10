@@ -1,0 +1,71 @@
+{{define "status.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <span class="logo">{{.Slug}} Status</span>
+    </header>
+    <main>
+        <div class="status-header">
+            <h1>
+                {{if .AllOperational}}
+                <span class="status-ok">All Systems Operational</span>
+                {{else}}
+                <span class="status-error">Some Systems Degraded</span>
+                {{end}}
+            </h1>
+            <div class="uptime-badge">
+                {{printf "%.1f" .OverallUptime}}<small>% Uptime</small>
+            </div>
+        </div>
+
+        {{if .Checks}}
+        <div class="checks-list">
+            {{range .Checks}}
+            <div class="check-card">
+                <div class="check-status {{.Status}}"></div>
+                <div class="check-info">
+                    <div class="check-name">{{.Name}}</div>
+                </div>
+                <div class="check-metrics">
+                    {{if .LastResponseMs}}
+                    <span class="response-time">{{.LastResponseMs}}<small>ms</small></span>
+                    {{else}}
+                    <span class="response-time">---</span>
+                    {{end}}
+                    <span class="uptime">{{printf "%.1f" .UptimePercent}}% uptime</span>
+                    {{if .Sparkline}}
+                    <div class="sparkline">
+                        {{range .Sparkline}}
+                        <div class="spark {{if .}}up{{else}}down{{end}}"></div>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="empty-state">
+            <h3>No Services Found</h3>
+            <p>This status page is not configured.</p>
+        </div>
+        {{end}}
+
+        <div class="last-updated">
+            Last updated {{.LastUpdated.Format "Jan 2, 15:04:05 MST"}}
+        </div>
+    </main>
+    <footer>
+        Powered by Sentinel
+    </footer>
+</body>
+</html>
+{{end}}

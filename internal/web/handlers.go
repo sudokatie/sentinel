@@ -384,3 +384,73 @@ func (s *Server) HandleEditCheckForm(c echo.Context) error {
 
 	return c.Redirect(http.StatusSeeOther, s.BasePath()+"/settings?message=Check+updated")
 }
+
+// StatusPageData holds data for public status pages
+type StatusPageData struct {
+	Title          string
+	Slug           string
+	AllOperational bool
+	OverallUptime  float64
+	Checks         []*CheckWithStatus
+	LastUpdated    time.Time
+}
+
+// handleStatusPage renders a public status page for a given tag/slug
+func (s *Server) handleStatusPage(c echo.Context) error {
+	slug := c.Param("slug")
+	if slug == "" {
+		return c.String(http.StatusNotFound, "Status page not found")
+	}
+
+	checks, err := s.storage.ListChecksByTag(slug)
+	if err != nil || len(checks) == 0 {
+		return c.String(http.StatusNotFound, "Status page not found")
+	}
+
+	// Build status data
+	var statusChecks []*CheckWithStatus
+	allUp := true
+	var totalUptime float64
+
+	for _, check := range checks {
+		stats, _ := s.storage.GetStats(check.ID)
+		uptime := 100.0
+		if stats != nil {
+			uptime = stats.UptimePercent24h
+		}
+		totalUptime += uptime
+
+		// Get sparkline
+		results, _ := s.storage.GetRecentResults(check.ID, 24)
+		sparkline := make([]bool, len(results))
+		for i, r := range results {
+			sparkline[i] = r.IsUp()
+		}
+
+		if check.Status != "up" {
+			allUp = false
+		}
+
+		statusChecks = append(statusChecks, &CheckWithStatus{
+			Check:         check,
+			UptimePercent: uptime,
+			Sparkline:     sparkline,
+		})
+	}
+
+	overallUptime := 100.0
+	if len(checks) > 0 {
+		overallUptime = totalUptime / float64(len(checks))
+	}
+
+	data := StatusPageData{
+		Title:          slug + " Status",
+		Slug:           slug,
+		AllOperational: allUp,
+		OverallUptime:  overallUptime,
+		Checks:         statusChecks,
+		LastUpdated:    time.Now(),
+	}
+
+	return c.Render(http.StatusOK, "status.html", data)
+}
