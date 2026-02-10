@@ -41,6 +41,11 @@
                     <span class="response-time">---</span>
                     {{end}}
                     <span class="uptime">{{printf "%.1f" .UptimePercent}}% uptime</span>
+                    {{if .SSLExpiresDate}}
+                    <span class="ssl-info{{if le .SSLDaysLeft 30}} ssl-warning{{end}}{{if le .SSLDaysLeft 7}} ssl-critical{{end}}">
+                        SSL: {{.SSLDaysLeft}}d
+                    </span>
+                    {{end}}
                     {{if .Sparkline}}
                     <div class="sparkline">
                         {{range .Sparkline}}

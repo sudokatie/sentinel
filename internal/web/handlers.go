@@ -23,8 +23,10 @@ type DashboardData struct {
 
 type CheckWithStatus struct {
 	*storage.Check
-	UptimePercent float64
-	Sparkline     []bool // Last 24 checks: true = up, false = down
+	UptimePercent  float64
+	Sparkline      []bool // Last 24 checks: true = up, false = down
+	SSLDaysLeft    int    // Days until SSL cert expires (0 if no SSL)
+	SSLExpiresDate string // Formatted expiry date
 }
 
 type CheckDetailData struct {
@@ -431,10 +433,20 @@ func (s *Server) handleStatusPage(c echo.Context) error {
 			allUp = false
 		}
 
+		// Get SSL info from most recent result
+		var sslDaysLeft int
+		var sslExpiresDate string
+		if len(results) > 0 && results[0].SSLExpiresAt != nil {
+			sslDaysLeft = results[0].SSLDaysLeft
+			sslExpiresDate = results[0].SSLExpiresAt.Format("Jan 2, 2006")
+		}
+
 		statusChecks = append(statusChecks, &CheckWithStatus{
-			Check:         check,
-			UptimePercent: uptime,
-			Sparkline:     sparkline,
+			Check:          check,
+			UptimePercent:  uptime,
+			Sparkline:      sparkline,
+			SSLDaysLeft:    sslDaysLeft,
+			SSLExpiresDate: sslExpiresDate,
 		})
 	}
 

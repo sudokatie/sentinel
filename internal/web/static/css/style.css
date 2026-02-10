@@ -1361,3 +1361,25 @@ footer::after {
     border-color: var(--orange);
     color: var(--bg);
 }
+
+/* SSL Certificate Info */
+.ssl-info {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--green);
+    padding: 2px 6px;
+    border: 1px solid var(--green);
+    border-radius: 3px;
+}
+
+.ssl-warning {
+    color: var(--orange);
+    border-color: var(--orange);
+}
+
+.ssl-critical {
+    color: var(--red);
+    border-color: var(--red);
+}
