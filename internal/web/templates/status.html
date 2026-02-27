@@ -64,6 +64,35 @@
         </div>
         {{end}}
 
+        {{if .RecentIncidents}}
+        <div class="incidents-section">
+            <h2>Recent Incidents</h2>
+            <div class="incidents-list">
+                {{range .RecentIncidents}}
+                <div class="incident-card {{if .IsActive}}active{{else}}resolved{{end}}">
+                    <div class="incident-header">
+                        <span class="incident-check">{{.CheckName}}</span>
+                        {{if .IsActive}}
+                        <span class="incident-badge active">Ongoing</span>
+                        {{else}}
+                        <span class="incident-badge resolved">Resolved</span>
+                        {{end}}
+                    </div>
+                    <div class="incident-details">
+                        <span class="incident-time">{{.StartedAt.Format "Jan 2, 15:04"}}</span>
+                        {{if not .IsActive}}
+                        <span class="incident-duration">Duration: {{.DurationString}}</span>
+                        {{end}}
+                        {{if .Cause}}
+                        <span class="incident-cause">{{.Cause}}</span>
+                        {{end}}
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
         <div class="last-updated">
             Last updated {{.LastUpdated.Format "Jan 2, 15:04:05 MST"}}
         </div>

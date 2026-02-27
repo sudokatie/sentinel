@@ -399,12 +399,13 @@ func (s *Server) HandleEditCheckForm(c echo.Context) error {
 
 // StatusPageData holds data for public status pages
 type StatusPageData struct {
-	Title          string
-	Slug           string
-	AllOperational bool
-	OverallUptime  float64
-	Checks         []*CheckWithStatus
-	LastUpdated    time.Time
+	Title           string
+	Slug            string
+	AllOperational  bool
+	OverallUptime   float64
+	Checks          []*CheckWithStatus
+	RecentIncidents []*storage.Incident
+	LastUpdated     time.Time
 }
 
 // handleStatusPage renders a public status page for a given tag/slug
@@ -465,13 +466,25 @@ func (s *Server) handleStatusPage(c echo.Context) error {
 		overallUptime = totalUptime / float64(len(checks))
 	}
 
+	// Get recent incidents for all checks on this page
+	var recentIncidents []*storage.Incident
+	for _, check := range checks {
+		incidents, _ := s.storage.ListIncidentsForCheck(check.ID, 3)
+		recentIncidents = append(recentIncidents, incidents...)
+	}
+	// Sort by started_at desc and limit to 5
+	if len(recentIncidents) > 5 {
+		recentIncidents = recentIncidents[:5]
+	}
+
 	data := StatusPageData{
-		Title:          slug + " Status",
-		Slug:           slug,
-		AllOperational: allUp,
-		OverallUptime:  overallUptime,
-		Checks:         statusChecks,
-		LastUpdated:    time.Now(),
+		Title:           slug + " Status",
+		Slug:            slug,
+		AllOperational:  allUp,
+		OverallUptime:   overallUptime,
+		Checks:          statusChecks,
+		RecentIncidents: recentIncidents,
+		LastUpdated:     time.Now(),
 	}
 
 	return c.Render(http.StatusOK, "status.html", data)

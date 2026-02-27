@@ -1383,3 +1383,82 @@ footer::after {
     color: var(--red);
     border-color: var(--red);
 }
+
+/* Recent Incidents */
+.incidents-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.incidents-section h2 {
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.incidents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.incident-card {
+    background: var(--card);
+    border-radius: 6px;
+    padding: 12px 15px;
+    border-left: 3px solid var(--border);
+}
+
+.incident-card.active {
+    border-left-color: var(--red);
+}
+
+.incident-card.resolved {
+    border-left-color: var(--green);
+}
+
+.incident-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.incident-check {
+    color: var(--text);
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.incident-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 3px;
+}
+
+.incident-badge.active {
+    background: var(--red);
+    color: var(--bg);
+}
+
+.incident-badge.resolved {
+    background: var(--green);
+    color: var(--bg);
+}
+
+.incident-details {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.incident-cause {
+    font-style: italic;
+}
