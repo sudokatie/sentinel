@@ -73,9 +73,20 @@ func (s *SQLiteStorage) Migrate() error {
 			ended_at DATETIME,
 			duration_seconds INTEGER,
 			cause TEXT,
+			status TEXT DEFAULT 'investigating',
+			title TEXT,
 			FOREIGN KEY (check_id) REFERENCES checks(id) ON DELETE CASCADE
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_incidents_check_id ON incidents(check_id)`,
+		`CREATE TABLE IF NOT EXISTS incident_notes (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			incident_id INTEGER NOT NULL,
+			content TEXT NOT NULL,
+			author TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_incident_notes_incident_id ON incident_notes(incident_id)`,
 		`CREATE TABLE IF NOT EXISTS alert_log (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			incident_id INTEGER,
@@ -109,13 +120,17 @@ func (s *SQLiteStorage) Migrate() error {
 		}
 	}
 
-	// Add SSL columns to check_results (will fail silently if columns exist)
-	sslMigrations := []string{
+	// Add columns to existing tables (will fail silently if columns exist)
+	optionalMigrations := []string{
+		// SSL columns for check_results
 		`ALTER TABLE check_results ADD COLUMN ssl_expires_at DATETIME`,
 		`ALTER TABLE check_results ADD COLUMN ssl_days_left INTEGER`,
 		`ALTER TABLE check_results ADD COLUMN ssl_issuer TEXT`,
+		// Incident management columns
+		`ALTER TABLE incidents ADD COLUMN status TEXT DEFAULT 'investigating'`,
+		`ALTER TABLE incidents ADD COLUMN title TEXT`,
 	}
-	for _, m := range sslMigrations {
+	for _, m := range optionalMigrations {
 		s.db.Exec(m) // Ignore errors (column already exists)
 	}
 
@@ -449,10 +464,14 @@ func (s *SQLiteStorage) scanResults(rows *sql.Rows) ([]*CheckResult, error) {
 // Incidents
 
 func (s *SQLiteStorage) CreateIncident(incident *Incident) error {
+	status := incident.Status
+	if status == "" {
+		status = IncidentStatusInvestigating
+	}
 	res, err := s.db.Exec(`
-		INSERT INTO incidents (check_id, started_at, cause)
-		VALUES (?, ?, ?)
-	`, incident.CheckID, incident.StartedAt, incident.Cause)
+		INSERT INTO incidents (check_id, started_at, cause, status, title)
+		VALUES (?, ?, ?, ?, ?)
+	`, incident.CheckID, incident.StartedAt, incident.Cause, status, incident.Title)
 	if err != nil {
 		return fmt.Errorf("inserting incident: %w", err)
 	}
@@ -463,12 +482,13 @@ func (s *SQLiteStorage) CreateIncident(incident *Incident) error {
 	}
 
 	incident.ID = id
+	incident.Status = status
 	return nil
 }
 
 func (s *SQLiteStorage) GetIncident(id int64) (*Incident, error) {
 	row := s.db.QueryRow(`
-		SELECT i.id, i.check_id, i.started_at, i.ended_at, i.duration_seconds, i.cause, c.name
+		SELECT i.id, i.check_id, i.started_at, i.ended_at, i.duration_seconds, i.cause, i.status, i.title, c.name
 		FROM incidents i
 		JOIN checks c ON c.id = i.check_id
 		WHERE i.id = ?
@@ -477,9 +497,24 @@ func (s *SQLiteStorage) GetIncident(id int64) (*Incident, error) {
 	return s.scanIncident(row)
 }
 
+func (s *SQLiteStorage) GetIncidentWithNotes(id int64) (*Incident, error) {
+	incident, err := s.GetIncident(id)
+	if err != nil || incident == nil {
+		return incident, err
+	}
+
+	notes, err := s.GetIncidentNotes(id)
+	if err != nil {
+		return nil, err
+	}
+	incident.Notes = notes
+
+	return incident, nil
+}
+
 func (s *SQLiteStorage) GetActiveIncident(checkID int64) (*Incident, error) {
 	row := s.db.QueryRow(`
-		SELECT i.id, i.check_id, i.started_at, i.ended_at, i.duration_seconds, i.cause, c.name
+		SELECT i.id, i.check_id, i.started_at, i.ended_at, i.duration_seconds, i.cause, i.status, i.title, c.name
 		FROM incidents i
 		JOIN checks c ON c.id = i.check_id
 		WHERE i.check_id = ? AND i.ended_at IS NULL
@@ -501,8 +536,8 @@ func (s *SQLiteStorage) CloseIncident(id int64, endedAt time.Time) error {
 	duration := int(endedAt.Sub(incident.StartedAt).Seconds())
 
 	_, err = s.db.Exec(`
-		UPDATE incidents SET ended_at = ?, duration_seconds = ? WHERE id = ?
-	`, endedAt, duration, id)
+		UPDATE incidents SET ended_at = ?, duration_seconds = ?, status = ? WHERE id = ?
+	`, endedAt, duration, IncidentStatusResolved, id)
 	if err != nil {
 		return fmt.Errorf("closing incident: %w", err)
 	}
@@ -510,9 +545,25 @@ func (s *SQLiteStorage) CloseIncident(id int64, endedAt time.Time) error {
 	return nil
 }
 
+func (s *SQLiteStorage) UpdateIncidentStatus(id int64, status IncidentStatus) error {
+	_, err := s.db.Exec(`UPDATE incidents SET status = ? WHERE id = ?`, status, id)
+	if err != nil {
+		return fmt.Errorf("updating incident status: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStorage) UpdateIncidentTitle(id int64, title string) error {
+	_, err := s.db.Exec(`UPDATE incidents SET title = ? WHERE id = ?`, title, id)
+	if err != nil {
+		return fmt.Errorf("updating incident title: %w", err)
+	}
+	return nil
+}
+
 func (s *SQLiteStorage) ListIncidents(limit int, offset int) ([]*Incident, error) {
 	rows, err := s.db.Query(`
-		SELECT i.id, i.check_id, i.started_at, i.ended_at, i.duration_seconds, i.cause, c.name
+		SELECT i.id, i.check_id, i.started_at, i.ended_at, i.duration_seconds, i.cause, i.status, i.title, c.name
 		FROM incidents i
 		JOIN checks c ON c.id = i.check_id
 		ORDER BY i.started_at DESC LIMIT ? OFFSET ?
@@ -527,7 +578,7 @@ func (s *SQLiteStorage) ListIncidents(limit int, offset int) ([]*Incident, error
 
 func (s *SQLiteStorage) ListIncidentsForCheck(checkID int64, limit int) ([]*Incident, error) {
 	rows, err := s.db.Query(`
-		SELECT i.id, i.check_id, i.started_at, i.ended_at, i.duration_seconds, i.cause, c.name
+		SELECT i.id, i.check_id, i.started_at, i.ended_at, i.duration_seconds, i.cause, i.status, i.title, c.name
 		FROM incidents i
 		JOIN checks c ON c.id = i.check_id
 		WHERE i.check_id = ?
@@ -541,15 +592,31 @@ func (s *SQLiteStorage) ListIncidentsForCheck(checkID int64, limit int) ([]*Inci
 	return s.scanIncidents(rows)
 }
 
+func (s *SQLiteStorage) ListActiveIncidents() ([]*Incident, error) {
+	rows, err := s.db.Query(`
+		SELECT i.id, i.check_id, i.started_at, i.ended_at, i.duration_seconds, i.cause, i.status, i.title, c.name
+		FROM incidents i
+		JOIN checks c ON c.id = i.check_id
+		WHERE i.ended_at IS NULL
+		ORDER BY i.started_at DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("querying active incidents: %w", err)
+	}
+	defer rows.Close()
+
+	return s.scanIncidents(rows)
+}
+
 func (s *SQLiteStorage) scanIncident(row *sql.Row) (*Incident, error) {
 	var incident Incident
 	var endedAt sql.NullTime
 	var duration sql.NullInt64
-	var cause sql.NullString
+	var cause, status, title sql.NullString
 
 	err := row.Scan(
 		&incident.ID, &incident.CheckID, &incident.StartedAt, &endedAt,
-		&duration, &cause, &incident.CheckName,
+		&duration, &cause, &status, &title, &incident.CheckName,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -567,6 +634,14 @@ func (s *SQLiteStorage) scanIncident(row *sql.Row) (*Incident, error) {
 	if cause.Valid {
 		incident.Cause = cause.String
 	}
+	if status.Valid {
+		incident.Status = IncidentStatus(status.String)
+	} else {
+		incident.Status = IncidentStatusInvestigating
+	}
+	if title.Valid {
+		incident.Title = title.String
+	}
 
 	return &incident, nil
 }
@@ -578,11 +653,11 @@ func (s *SQLiteStorage) scanIncidents(rows *sql.Rows) ([]*Incident, error) {
 		var incident Incident
 		var endedAt sql.NullTime
 		var duration sql.NullInt64
-		var cause sql.NullString
+		var cause, status, title sql.NullString
 
 		err := rows.Scan(
 			&incident.ID, &incident.CheckID, &incident.StartedAt, &endedAt,
-			&duration, &cause, &incident.CheckName,
+			&duration, &cause, &status, &title, &incident.CheckName,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning incident: %w", err)
@@ -597,11 +672,77 @@ func (s *SQLiteStorage) scanIncidents(rows *sql.Rows) ([]*Incident, error) {
 		if cause.Valid {
 			incident.Cause = cause.String
 		}
+		if status.Valid {
+			incident.Status = IncidentStatus(status.String)
+		} else {
+			incident.Status = IncidentStatusInvestigating
+		}
+		if title.Valid {
+			incident.Title = title.String
+		}
 
 		incidents = append(incidents, &incident)
 	}
 
 	return incidents, nil
+}
+
+// Incident Notes
+
+func (s *SQLiteStorage) AddIncidentNote(note *IncidentNote) error {
+	res, err := s.db.Exec(`
+		INSERT INTO incident_notes (incident_id, content, author, created_at)
+		VALUES (?, ?, ?, ?)
+	`, note.IncidentID, note.Content, note.Author, time.Now())
+	if err != nil {
+		return fmt.Errorf("inserting incident note: %w", err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("getting last insert id: %w", err)
+	}
+
+	note.ID = id
+	note.CreatedAt = time.Now()
+	return nil
+}
+
+func (s *SQLiteStorage) GetIncidentNotes(incidentID int64) ([]*IncidentNote, error) {
+	rows, err := s.db.Query(`
+		SELECT id, incident_id, content, author, created_at
+		FROM incident_notes WHERE incident_id = ? ORDER BY created_at ASC
+	`, incidentID)
+	if err != nil {
+		return nil, fmt.Errorf("querying incident notes: %w", err)
+	}
+	defer rows.Close()
+
+	var notes []*IncidentNote
+	for rows.Next() {
+		var note IncidentNote
+		var author sql.NullString
+
+		err := rows.Scan(&note.ID, &note.IncidentID, &note.Content, &author, &note.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("scanning incident note: %w", err)
+		}
+
+		if author.Valid {
+			note.Author = author.String
+		}
+		notes = append(notes, &note)
+	}
+
+	return notes, nil
+}
+
+func (s *SQLiteStorage) DeleteIncidentNote(id int64) error {
+	_, err := s.db.Exec(`DELETE FROM incident_notes WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("deleting incident note: %w", err)
+	}
+	return nil
 }
 
 // Alert Log

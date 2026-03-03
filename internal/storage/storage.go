@@ -27,10 +27,19 @@ type Storage interface {
 	// Incidents
 	CreateIncident(incident *Incident) error
 	GetIncident(id int64) (*Incident, error)
+	GetIncidentWithNotes(id int64) (*Incident, error)
 	GetActiveIncident(checkID int64) (*Incident, error)
 	CloseIncident(id int64, endedAt time.Time) error
+	UpdateIncidentStatus(id int64, status IncidentStatus) error
+	UpdateIncidentTitle(id int64, title string) error
 	ListIncidents(limit int, offset int) ([]*Incident, error)
 	ListIncidentsForCheck(checkID int64, limit int) ([]*Incident, error)
+	ListActiveIncidents() ([]*Incident, error)
+
+	// Incident Notes
+	AddIncidentNote(note *IncidentNote) error
+	GetIncidentNotes(incidentID int64) ([]*IncidentNote, error)
+	DeleteIncidentNote(id int64) error
 
 	// Alert Log
 	LogAlert(log *AlertLog) error

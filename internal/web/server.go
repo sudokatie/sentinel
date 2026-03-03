@@ -121,7 +121,12 @@ func (s *Server) registerRoutes() {
 		api.GET("/checks/:id/stats", s.HandleGetCheckStats)
 		api.POST("/checks/:id/trigger", s.HandleTriggerCheck)
 		api.GET("/incidents", s.HandleListIncidents)
+		api.GET("/incidents/active", s.HandleListActiveIncidents)
 		api.GET("/incidents/:id", s.HandleGetIncident)
+		api.PUT("/incidents/:id/status", s.HandleUpdateIncidentStatus)
+		api.PUT("/incidents/:id/title", s.HandleUpdateIncidentTitle)
+		api.POST("/incidents/:id/notes", s.HandleAddIncidentNote)
+		api.DELETE("/incidents/:id/notes/:noteId", s.HandleDeleteIncidentNote)
 	} else {
 		// No auth - public access
 		s.echo.GET("/", s.HandleDashboard)
@@ -142,7 +147,12 @@ func (s *Server) registerRoutes() {
 		api.GET("/checks/:id/stats", s.HandleGetCheckStats)
 		api.POST("/checks/:id/trigger", s.HandleTriggerCheck)
 		api.GET("/incidents", s.HandleListIncidents)
+		api.GET("/incidents/active", s.HandleListActiveIncidents)
 		api.GET("/incidents/:id", s.HandleGetIncident)
+		api.PUT("/incidents/:id/status", s.HandleUpdateIncidentStatus)
+		api.PUT("/incidents/:id/title", s.HandleUpdateIncidentTitle)
+		api.POST("/incidents/:id/notes", s.HandleAddIncidentNote)
+		api.DELETE("/incidents/:id/notes/:noteId", s.HandleDeleteIncidentNote)
 	}
 }
 

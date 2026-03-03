@@ -182,9 +182,49 @@ curl http://localhost:3000/api/checks/1/stats
 # List incidents (the hall of shame)
 curl http://localhost:3000/api/incidents?limit=20
 
+# List active incidents only
+curl http://localhost:3000/api/incidents/active
+
+# Get incident details with timeline
+curl http://localhost:3000/api/incidents/1
+
+# Update incident status (investigating, identified, monitoring, resolved)
+curl -X PUT http://localhost:3000/api/incidents/1/status \
+  -H "Content-Type: application/json" \
+  -d '{"status":"identified"}'
+
+# Update incident title
+curl -X PUT http://localhost:3000/api/incidents/1/title \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Database connection issues"}'
+
+# Add a note to an incident (build your timeline)
+curl -X POST http://localhost:3000/api/incidents/1/notes \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Root cause identified: connection pool exhausted","author":"Alice"}'
+
 # Health check (quis custodiet ipsos custodes?)
 curl http://localhost:3000/api/health
 ```
+
+## Incident Management
+
+Incidents are auto-created when a check fails. But raw downtime isn't the whole story.
+
+**Status Tracking**: Each incident has a status that follows the standard incident response lifecycle:
+- `investigating` - Initial state. Something's wrong, you're looking into it.
+- `identified` - You know what's broken.
+- `monitoring` - Fix is deployed, watching for recurrence.
+- `resolved` - All clear. Time for the postmortem.
+
+**Incident Notes**: Build a timeline of what happened and when. Add notes as you investigate:
+- "Noticed elevated error rates"
+- "Root cause: database failover triggered by network partition"
+- "Deployed hotfix to connection retry logic"
+
+Notes are timestamped and optionally attributed. Your future self will thank you during the postmortem.
+
+**Titles**: Give incidents meaningful names. "API Outage" beats "Incident #47".
 
 ## Docker
 

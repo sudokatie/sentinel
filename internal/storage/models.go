@@ -51,20 +51,60 @@ func (r *CheckResult) IsUp() bool {
 	return r.Status == "up"
 }
 
-type Incident struct {
-	ID              int64      `json:"id"`
-	CheckID         int64      `json:"check_id"`
-	StartedAt       time.Time  `json:"started_at"`
-	EndedAt         *time.Time `json:"ended_at,omitempty"`
-	DurationSeconds int        `json:"duration_seconds"`
-	Cause           string     `json:"cause,omitempty"`
+// IncidentStatus represents the current status of an incident
+type IncidentStatus string
 
-	// Joined field
-	CheckName string `json:"check_name,omitempty"`
+const (
+	IncidentStatusInvestigating IncidentStatus = "investigating"
+	IncidentStatusIdentified    IncidentStatus = "identified"
+	IncidentStatusMonitoring    IncidentStatus = "monitoring"
+	IncidentStatusResolved      IncidentStatus = "resolved"
+)
+
+type Incident struct {
+	ID              int64          `json:"id"`
+	CheckID         int64          `json:"check_id"`
+	StartedAt       time.Time      `json:"started_at"`
+	EndedAt         *time.Time     `json:"ended_at,omitempty"`
+	DurationSeconds int            `json:"duration_seconds"`
+	Cause           string         `json:"cause,omitempty"`
+	Status          IncidentStatus `json:"status"`
+	Title           string         `json:"title,omitempty"`
+
+	// Joined fields
+	CheckName string          `json:"check_name,omitempty"`
+	Notes     []*IncidentNote `json:"notes,omitempty"`
+}
+
+type IncidentNote struct {
+	ID         int64     `json:"id"`
+	IncidentID int64     `json:"incident_id"`
+	Content    string    `json:"content"`
+	Author     string    `json:"author,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 func (i *Incident) IsActive() bool {
 	return i.EndedAt == nil
+}
+
+func (i *Incident) IsResolved() bool {
+	return i.Status == IncidentStatusResolved
+}
+
+func (i *Incident) StatusString() string {
+	switch i.Status {
+	case IncidentStatusInvestigating:
+		return "Investigating"
+	case IncidentStatusIdentified:
+		return "Identified"
+	case IncidentStatusMonitoring:
+		return "Monitoring"
+	case IncidentStatusResolved:
+		return "Resolved"
+	default:
+		return "Investigating"
+	}
 }
 
 func (i *Incident) Duration() time.Duration {

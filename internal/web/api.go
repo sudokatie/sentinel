@@ -269,7 +269,7 @@ func (s *Server) HandleGetIncident(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, APIResponse{Error: "Invalid incident ID"})
 	}
 
-	incident, err := s.storage.GetIncident(id)
+	incident, err := s.storage.GetIncidentWithNotes(id)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, APIResponse{Error: err.Error()})
 	}
@@ -278,4 +278,137 @@ func (s *Server) HandleGetIncident(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, APIResponse{Data: incident})
+}
+
+func (s *Server) HandleListActiveIncidents(c echo.Context) error {
+	incidents, err := s.storage.ListActiveIncidents()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, APIResponse{Error: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, APIResponse{Data: incidents})
+}
+
+type UpdateIncidentStatusInput struct {
+	Status string `json:"status"`
+}
+
+func (s *Server) HandleUpdateIncidentStatus(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, APIResponse{Error: "Invalid incident ID"})
+	}
+
+	incident, err := s.storage.GetIncident(id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, APIResponse{Error: err.Error()})
+	}
+	if incident == nil {
+		return c.JSON(http.StatusNotFound, APIResponse{Error: "Incident not found"})
+	}
+
+	var input UpdateIncidentStatusInput
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, APIResponse{Error: "Invalid request body"})
+	}
+
+	// Validate status
+	status := storage.IncidentStatus(input.Status)
+	switch status {
+	case storage.IncidentStatusInvestigating, storage.IncidentStatusIdentified,
+		storage.IncidentStatusMonitoring, storage.IncidentStatusResolved:
+		// Valid
+	default:
+		return c.JSON(http.StatusBadRequest, APIResponse{Error: "Invalid status. Must be: investigating, identified, monitoring, or resolved"})
+	}
+
+	if err := s.storage.UpdateIncidentStatus(id, status); err != nil {
+		return c.JSON(http.StatusInternalServerError, APIResponse{Error: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, APIResponse{Data: map[string]string{"status": string(status)}})
+}
+
+type UpdateIncidentTitleInput struct {
+	Title string `json:"title"`
+}
+
+func (s *Server) HandleUpdateIncidentTitle(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, APIResponse{Error: "Invalid incident ID"})
+	}
+
+	incident, err := s.storage.GetIncident(id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, APIResponse{Error: err.Error()})
+	}
+	if incident == nil {
+		return c.JSON(http.StatusNotFound, APIResponse{Error: "Incident not found"})
+	}
+
+	var input UpdateIncidentTitleInput
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, APIResponse{Error: "Invalid request body"})
+	}
+
+	if err := s.storage.UpdateIncidentTitle(id, input.Title); err != nil {
+		return c.JSON(http.StatusInternalServerError, APIResponse{Error: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, APIResponse{Data: map[string]string{"title": input.Title}})
+}
+
+type AddIncidentNoteInput struct {
+	Content string `json:"content"`
+	Author  string `json:"author,omitempty"`
+}
+
+func (s *Server) HandleAddIncidentNote(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, APIResponse{Error: "Invalid incident ID"})
+	}
+
+	incident, err := s.storage.GetIncident(id)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, APIResponse{Error: err.Error()})
+	}
+	if incident == nil {
+		return c.JSON(http.StatusNotFound, APIResponse{Error: "Incident not found"})
+	}
+
+	var input AddIncidentNoteInput
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, APIResponse{Error: "Invalid request body"})
+	}
+
+	if input.Content == "" {
+		return c.JSON(http.StatusBadRequest, APIResponse{Error: "content is required"})
+	}
+
+	note := &storage.IncidentNote{
+		IncidentID: id,
+		Content:    input.Content,
+		Author:     input.Author,
+	}
+
+	if err := s.storage.AddIncidentNote(note); err != nil {
+		return c.JSON(http.StatusInternalServerError, APIResponse{Error: err.Error()})
+	}
+
+	return c.JSON(http.StatusCreated, APIResponse{Data: note})
+}
+
+func (s *Server) HandleDeleteIncidentNote(c echo.Context) error {
+	noteID, err := strconv.ParseInt(c.Param("noteId"), 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, APIResponse{Error: "Invalid note ID"})
+	}
+
+	if err := s.storage.DeleteIncidentNote(noteID); err != nil {
+		return c.JSON(http.StatusInternalServerError, APIResponse{Error: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, APIResponse{Data: map[string]bool{"deleted": true}})
 }

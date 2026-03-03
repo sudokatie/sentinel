@@ -616,6 +616,165 @@ func TestListIncidentsForCheck(t *testing.T) {
 	}
 }
 
+func TestIncidentStatus(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{Name: "Status Test", URL: "https://status.com", IntervalSecs: 60, TimeoutSecs: 10, ExpectedStatus: 200, Enabled: true}
+	s.CreateCheck(check)
+
+	incident := &Incident{CheckID: check.ID, StartedAt: time.Now(), Cause: "Timeout"}
+	if err := s.CreateIncident(incident); err != nil {
+		t.Fatalf("failed to create incident: %v", err)
+	}
+
+	// Default status should be investigating
+	got, _ := s.GetIncident(incident.ID)
+	if got.Status != IncidentStatusInvestigating {
+		t.Errorf("expected status investigating, got %s", got.Status)
+	}
+
+	// Update status to identified
+	if err := s.UpdateIncidentStatus(incident.ID, IncidentStatusIdentified); err != nil {
+		t.Fatalf("failed to update status: %v", err)
+	}
+
+	got, _ = s.GetIncident(incident.ID)
+	if got.Status != IncidentStatusIdentified {
+		t.Errorf("expected status identified, got %s", got.Status)
+	}
+}
+
+func TestIncidentTitle(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{Name: "Title Test", URL: "https://title.com", IntervalSecs: 60, TimeoutSecs: 10, ExpectedStatus: 200, Enabled: true}
+	s.CreateCheck(check)
+
+	incident := &Incident{CheckID: check.ID, StartedAt: time.Now(), Cause: "Error"}
+	s.CreateIncident(incident)
+
+	// Update title
+	if err := s.UpdateIncidentTitle(incident.ID, "Database Connection Issues"); err != nil {
+		t.Fatalf("failed to update title: %v", err)
+	}
+
+	got, _ := s.GetIncident(incident.ID)
+	if got.Title != "Database Connection Issues" {
+		t.Errorf("expected title 'Database Connection Issues', got '%s'", got.Title)
+	}
+}
+
+func TestIncidentNotes(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{Name: "Notes Test", URL: "https://notes.com", IntervalSecs: 60, TimeoutSecs: 10, ExpectedStatus: 200, Enabled: true}
+	s.CreateCheck(check)
+
+	incident := &Incident{CheckID: check.ID, StartedAt: time.Now(), Cause: "Outage"}
+	s.CreateIncident(incident)
+
+	// Add notes
+	note1 := &IncidentNote{IncidentID: incident.ID, Content: "Investigating the issue", Author: "Alice"}
+	if err := s.AddIncidentNote(note1); err != nil {
+		t.Fatalf("failed to add note: %v", err)
+	}
+
+	note2 := &IncidentNote{IncidentID: incident.ID, Content: "Root cause identified", Author: "Bob"}
+	s.AddIncidentNote(note2)
+
+	// Get notes
+	notes, err := s.GetIncidentNotes(incident.ID)
+	if err != nil {
+		t.Fatalf("failed to get notes: %v", err)
+	}
+	if len(notes) != 2 {
+		t.Errorf("expected 2 notes, got %d", len(notes))
+	}
+	if notes[0].Author != "Alice" {
+		t.Errorf("expected author Alice, got %s", notes[0].Author)
+	}
+
+	// Delete note
+	if err := s.DeleteIncidentNote(note1.ID); err != nil {
+		t.Fatalf("failed to delete note: %v", err)
+	}
+
+	notes, _ = s.GetIncidentNotes(incident.ID)
+	if len(notes) != 1 {
+		t.Errorf("expected 1 note after deletion, got %d", len(notes))
+	}
+}
+
+func TestGetIncidentWithNotes(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{Name: "WithNotes Test", URL: "https://withnotes.com", IntervalSecs: 60, TimeoutSecs: 10, ExpectedStatus: 200, Enabled: true}
+	s.CreateCheck(check)
+
+	incident := &Incident{CheckID: check.ID, StartedAt: time.Now(), Cause: "Error", Title: "API Outage"}
+	s.CreateIncident(incident)
+
+	s.AddIncidentNote(&IncidentNote{IncidentID: incident.ID, Content: "Note 1"})
+	s.AddIncidentNote(&IncidentNote{IncidentID: incident.ID, Content: "Note 2"})
+
+	got, err := s.GetIncidentWithNotes(incident.ID)
+	if err != nil {
+		t.Fatalf("failed to get incident with notes: %v", err)
+	}
+	if len(got.Notes) != 2 {
+		t.Errorf("expected 2 notes, got %d", len(got.Notes))
+	}
+	if got.Title != "API Outage" {
+		t.Errorf("expected title 'API Outage', got '%s'", got.Title)
+	}
+}
+
+func TestListActiveIncidents(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{Name: "Active Test", URL: "https://active.com", IntervalSecs: 60, TimeoutSecs: 10, ExpectedStatus: 200, Enabled: true}
+	s.CreateCheck(check)
+
+	// Create an active incident
+	active := &Incident{CheckID: check.ID, StartedAt: time.Now(), Cause: "Outage"}
+	s.CreateIncident(active)
+
+	// Create a closed incident
+	closed := &Incident{CheckID: check.ID, StartedAt: time.Now().Add(-time.Hour), Cause: "Previous outage"}
+	s.CreateIncident(closed)
+	s.CloseIncident(closed.ID, time.Now().Add(-30*time.Minute))
+
+	// List active incidents
+	incidents, err := s.ListActiveIncidents()
+	if err != nil {
+		t.Fatalf("failed to list active incidents: %v", err)
+	}
+	if len(incidents) != 1 {
+		t.Errorf("expected 1 active incident, got %d", len(incidents))
+	}
+	if incidents[0].ID != active.ID {
+		t.Errorf("expected active incident ID %d, got %d", active.ID, incidents[0].ID)
+	}
+}
+
+func TestCloseIncidentSetsResolved(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{Name: "Close Test", URL: "https://close.com", IntervalSecs: 60, TimeoutSecs: 10, ExpectedStatus: 200, Enabled: true}
+	s.CreateCheck(check)
+
+	incident := &Incident{CheckID: check.ID, StartedAt: time.Now(), Cause: "Test", Status: IncidentStatusIdentified}
+	s.CreateIncident(incident)
+
+	// Close the incident
+	s.CloseIncident(incident.ID, time.Now())
+
+	got, _ := s.GetIncident(incident.ID)
+	if got.Status != IncidentStatusResolved {
+		t.Errorf("expected status resolved after close, got %s", got.Status)
+	}
+}
+
 func TestAlertLog(t *testing.T) {
 	s := setupTestDB(t)
 
