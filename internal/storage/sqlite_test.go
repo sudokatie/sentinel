@@ -284,6 +284,82 @@ func TestGetLatestResultNotFound(t *testing.T) {
 	}
 }
 
+func TestGetLatestResultsByRegion(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{
+		Name:           "Multi-Region Check",
+		URL:            "https://multiregion.com",
+		IntervalSecs:   60,
+		TimeoutSecs:    10,
+		ExpectedStatus: 200,
+		Enabled:        true,
+		Regions:        []string{"us", "eu", "apac"},
+	}
+	if err := s.CreateCheck(check); err != nil {
+		t.Fatalf("failed to create check: %v", err)
+	}
+
+	// Add results for each region
+	regions := []string{"us", "eu", "apac"}
+	statuses := []string{"up", "down", "up"}
+	for i, region := range regions {
+		result := &CheckResult{
+			CheckID:        check.ID,
+			Region:         region,
+			Status:         statuses[i],
+			StatusCode:     200,
+			ResponseTimeMs: 100 + i*50,
+		}
+		if err := s.SaveResult(result); err != nil {
+			t.Fatalf("failed to save result: %v", err)
+		}
+	}
+
+	// Get results by region
+	results, err := s.GetLatestResultsByRegion(check.ID)
+	if err != nil {
+		t.Fatalf("failed to get results by region: %v", err)
+	}
+
+	if len(results) != 3 {
+		t.Errorf("expected 3 regions, got %d", len(results))
+	}
+
+	// Verify each region
+	for i, region := range regions {
+		r, ok := results[region]
+		if !ok {
+			t.Errorf("expected result for region %s", region)
+			continue
+		}
+		if r.Status != statuses[i] {
+			t.Errorf("region %s: expected status %s, got %s", region, statuses[i], r.Status)
+		}
+	}
+
+	// Test with no regional results
+	check2 := &Check{
+		Name:           "Non-Regional Check",
+		URL:            "https://nonregional.com",
+		IntervalSecs:   60,
+		TimeoutSecs:    10,
+		ExpectedStatus: 200,
+		Enabled:        true,
+	}
+	if err := s.CreateCheck(check2); err != nil {
+		t.Fatalf("failed to create check: %v", err)
+	}
+
+	results2, err := s.GetLatestResultsByRegion(check2.ID)
+	if err != nil {
+		t.Fatalf("failed to get results by region: %v", err)
+	}
+	if len(results2) != 0 {
+		t.Errorf("expected 0 regions for non-regional check, got %d", len(results2))
+	}
+}
+
 func TestGetResultsInRange(t *testing.T) {
 	s := setupTestDB(t)
 

@@ -56,6 +56,13 @@
                                 SSL: {{.SSLDaysLeft}}d
                             </span>
                             {{end}}
+                            {{if .RegionStatuses}}
+                            <div class="region-statuses">
+                                {{range .RegionStatuses}}
+                                <span class="region-status {{.Status}}" title="{{.Region}}: {{.Status}}{{if .ResponseTime}} ({{.ResponseTime}}ms){{end}}">{{.Region}}</span>
+                                {{end}}
+                            </div>
+                            {{end}}
                             {{if .Sparkline}}
                             <div class="sparkline">
                                 {{range .Sparkline}}

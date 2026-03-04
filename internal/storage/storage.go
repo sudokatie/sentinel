@@ -20,6 +20,7 @@ type Storage interface {
 	SaveResult(result *CheckResult) error
 	GetResults(checkID int64, limit int, offset int) ([]*CheckResult, error)
 	GetLatestResult(checkID int64) (*CheckResult, error)
+	GetLatestResultsByRegion(checkID int64) (map[string]*CheckResult, error)
 	GetResultsInRange(checkID int64, start, end time.Time) ([]*CheckResult, error)
 	GetRecentResults(checkID int64, count int) ([]*CheckResult, error)
 	GetStats(checkID int64) (*CheckStats, error)

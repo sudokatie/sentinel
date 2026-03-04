@@ -27,6 +27,14 @@ type CheckWithStatus struct {
 	Sparkline      []bool // Last 24 checks: true = up, false = down
 	SSLDaysLeft    int    // Days until SSL cert expires (0 if no SSL)
 	SSLExpiresDate string // Formatted expiry date
+	RegionStatuses []RegionStatus // Per-region status (empty if no regions configured)
+}
+
+// RegionStatus represents the status of a check for a specific region
+type RegionStatus struct {
+	Region       string
+	Status       string // "up", "down", "pending"
+	ResponseTime int
 }
 
 type CheckDetailData struct {
@@ -121,12 +129,30 @@ func (s *Server) HandleDashboard(c echo.Context) error {
 			sslExpiresDate = results[0].SSLExpiresAt.Format("Jan 2, 2006")
 		}
 
+		// Get per-region status if check has regions configured
+		var regionStatuses []RegionStatus
+		if len(check.Regions) > 0 {
+			regionResults, _ := s.storage.GetLatestResultsByRegion(check.ID)
+			for _, region := range check.Regions {
+				rs := RegionStatus{
+					Region: region,
+					Status: "pending",
+				}
+				if r, ok := regionResults[region]; ok {
+					rs.Status = r.Status
+					rs.ResponseTime = r.ResponseTimeMs
+				}
+				regionStatuses = append(regionStatuses, rs)
+			}
+		}
+
 		cws := &CheckWithStatus{
 			Check:          check,
 			UptimePercent:  uptimePercent,
 			Sparkline:      sparkline,
 			SSLDaysLeft:    sslDaysLeft,
 			SSLExpiresDate: sslExpiresDate,
+			RegionStatuses: regionStatuses,
 		}
 
 		// Group by first tag or "default"

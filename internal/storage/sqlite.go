@@ -399,6 +399,57 @@ func (s *SQLiteStorage) GetLatestResult(checkID int64) (*CheckResult, error) {
 	return &result, nil
 }
 
+// GetLatestResultsByRegion returns the most recent result for each region of a check
+func (s *SQLiteStorage) GetLatestResultsByRegion(checkID int64) (map[string]*CheckResult, error) {
+	// Get distinct regions for this check
+	rows, err := s.db.Query(`
+		SELECT DISTINCT COALESCE(region, '') as region FROM check_results WHERE check_id = ? AND region != ''
+	`, checkID)
+	if err != nil {
+		return nil, fmt.Errorf("querying regions: %w", err)
+	}
+	defer rows.Close()
+
+	var regions []string
+	for rows.Next() {
+		var region string
+		if err := rows.Scan(&region); err != nil {
+			return nil, fmt.Errorf("scanning region: %w", err)
+		}
+		regions = append(regions, region)
+	}
+
+	// Get latest result for each region
+	results := make(map[string]*CheckResult)
+	for _, region := range regions {
+		row := s.db.QueryRow(`
+			SELECT id, check_id, COALESCE(region, '') as region, status, status_code, response_time_ms, error_message, checked_at
+			FROM check_results WHERE check_id = ? AND region = ? ORDER BY checked_at DESC LIMIT 1
+		`, checkID, region)
+
+		var result CheckResult
+		var errMsg sql.NullString
+
+		err := row.Scan(
+			&result.ID, &result.CheckID, &result.Region, &result.Status, &result.StatusCode,
+			&result.ResponseTimeMs, &errMsg, &result.CheckedAt,
+		)
+		if err != nil && err != sql.ErrNoRows {
+			return nil, fmt.Errorf("scanning result for region %s: %w", region, err)
+		}
+
+		if errMsg.Valid {
+			result.ErrorMessage = errMsg.String
+		}
+
+		if err == nil {
+			results[region] = &result
+		}
+	}
+
+	return results, nil
+}
+
 func (s *SQLiteStorage) GetResultsInRange(checkID int64, start, end time.Time) ([]*CheckResult, error) {
 	rows, err := s.db.Query(`
 		SELECT id, check_id, COALESCE(region, '') as region, status, status_code, response_time_ms, error_message, checked_at

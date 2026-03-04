@@ -479,6 +479,39 @@ footer::after {
     background: var(--status-down);
 }
 
+/* Region Statuses */
+.region-statuses {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.region-status {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--border);
+    color: var(--text-dim);
+    cursor: default;
+}
+
+.region-status.up {
+    background: var(--status-up-dim);
+    color: var(--status-up);
+}
+
+.region-status.down {
+    background: var(--status-down-dim);
+    color: var(--status-down);
+}
+
+.region-status.pending {
+    background: var(--border);
+    color: var(--text-dim);
+}
+
 /* Incidents */
 .incidents-section {
     margin-top: 64px;
