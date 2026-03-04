@@ -450,6 +450,23 @@ func (s *SQLiteStorage) GetLatestResultsByRegion(checkID int64) (map[string]*Che
 	return results, nil
 }
 
+// CountFailingRegions returns the number of distinct regions with the most recent result being "down"
+func (s *SQLiteStorage) CountFailingRegions(checkID int64) (int, error) {
+	// Get latest result per region and count failures
+	regionResults, err := s.GetLatestResultsByRegion(checkID)
+	if err != nil {
+		return 0, err
+	}
+
+	failingCount := 0
+	for _, result := range regionResults {
+		if result.Status == "down" {
+			failingCount++
+		}
+	}
+	return failingCount, nil
+}
+
 func (s *SQLiteStorage) GetResultsInRange(checkID int64, start, end time.Time) ([]*CheckResult, error) {
 	rows, err := s.db.Query(`
 		SELECT id, check_id, COALESCE(region, '') as region, status, status_code, response_time_ms, error_message, checked_at

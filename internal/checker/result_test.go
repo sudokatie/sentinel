@@ -353,3 +353,108 @@ func TestProcessResultNoAlertOnFirstCheck(t *testing.T) {
 		t.Errorf("expected 0 down alerts on first check, got %d", alerter.downAlerts)
 	}
 }
+
+func TestProcessResultMultiRegionThreshold(t *testing.T) {
+	store := setupTestStorage(t)
+	alerter := &mockAlerter{}
+
+	// Create a multi-region check
+	check := &storage.Check{
+		Name:           "Multi-Region Test",
+		URL:            "https://test.com",
+		IntervalSecs:   60,
+		TimeoutSecs:    10,
+		ExpectedStatus: 200,
+		Enabled:        true,
+		Status:         "up",
+		Regions:        []string{"us", "eu", "apac"},
+	}
+	if err := store.CreateCheck(check); err != nil {
+		t.Fatalf("failed to create check: %v", err)
+	}
+
+	// Add initial "up" results for all regions
+	for _, region := range check.Regions {
+		result := &storage.CheckResult{
+			CheckID:        check.ID,
+			Region:         region,
+			Status:         "up",
+			StatusCode:     200,
+			ResponseTimeMs: 100,
+		}
+		if err := store.SaveResult(result); err != nil {
+			t.Fatalf("failed to save result: %v", err)
+		}
+	}
+
+	// Simulate one region going down with threshold=2
+	response := &CheckResponse{
+		Error: errors.New("timeout"),
+	}
+
+	// Process result for "us" region going down - with threshold=2, should NOT alert
+	if err := ProcessResultWithOptions(store, alerter, check, response, 1, "us", 2); err != nil {
+		t.Fatalf("ProcessResultWithOptions failed: %v", err)
+	}
+
+	if alerter.downAlerts != 0 {
+		t.Errorf("expected 0 alerts (only 1 region down, threshold 2), got %d", alerter.downAlerts)
+	}
+
+	// Now simulate second region going down
+	if err := ProcessResultWithOptions(store, alerter, check, response, 1, "eu", 2); err != nil {
+		t.Fatalf("ProcessResultWithOptions failed: %v", err)
+	}
+
+	// Now should alert (2 regions down >= threshold 2)
+	if alerter.downAlerts != 1 {
+		t.Errorf("expected 1 alert (2 regions down, threshold 2), got %d", alerter.downAlerts)
+	}
+}
+
+func TestProcessResultMultiRegionThresholdZero(t *testing.T) {
+	store := setupTestStorage(t)
+	alerter := &mockAlerter{}
+
+	// Create a multi-region check
+	check := &storage.Check{
+		Name:           "Multi-Region Zero Threshold",
+		URL:            "https://test.com",
+		IntervalSecs:   60,
+		TimeoutSecs:    10,
+		ExpectedStatus: 200,
+		Enabled:        true,
+		Status:         "up",
+		Regions:        []string{"us", "eu"},
+	}
+	if err := store.CreateCheck(check); err != nil {
+		t.Fatalf("failed to create check: %v", err)
+	}
+
+	// Add initial "up" results
+	for _, region := range check.Regions {
+		result := &storage.CheckResult{
+			CheckID:        check.ID,
+			Region:         region,
+			Status:         "up",
+			StatusCode:     200,
+			ResponseTimeMs: 100,
+		}
+		if err := store.SaveResult(result); err != nil {
+			t.Fatalf("failed to save result: %v", err)
+		}
+	}
+
+	// With threshold=0, should alert on first failure (default behavior)
+	response := &CheckResponse{
+		Error: errors.New("timeout"),
+	}
+
+	if err := ProcessResultWithOptions(store, alerter, check, response, 1, "us", 0); err != nil {
+		t.Fatalf("ProcessResultWithOptions failed: %v", err)
+	}
+
+	if alerter.downAlerts != 1 {
+		t.Errorf("expected 1 alert with threshold 0, got %d", alerter.downAlerts)
+	}
+}

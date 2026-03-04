@@ -15,11 +15,16 @@ type Alerter interface {
 
 // ProcessResult handles a check response: saves result, detects state changes, manages incidents
 func ProcessResult(store storage.Storage, alerter Alerter, check *storage.Check, response *CheckResponse, consecutiveFailures int) error {
-	return ProcessResultWithRegion(store, alerter, check, response, consecutiveFailures, "")
+	return ProcessResultWithOptions(store, alerter, check, response, consecutiveFailures, "", 0)
 }
 
 // ProcessResultWithRegion handles a check response with optional region tag
 func ProcessResultWithRegion(store storage.Storage, alerter Alerter, check *storage.Check, response *CheckResponse, consecutiveFailures int, region string) error {
+	return ProcessResultWithOptions(store, alerter, check, response, consecutiveFailures, region, 0)
+}
+
+// ProcessResultWithOptions handles a check response with all options including multi-region threshold
+func ProcessResultWithOptions(store storage.Storage, alerter Alerter, check *storage.Check, response *CheckResponse, consecutiveFailures int, region string, multiRegionThreshold int) error {
 	// Determine status
 	status := DetermineStatus(response, check.ExpectedStatus)
 
@@ -56,6 +61,18 @@ func ProcessResultWithRegion(store storage.Storage, alerter Alerter, check *stor
 		shouldAlert, err := ShouldAlert(store, check.ID, consecutiveFailures)
 		if err != nil {
 			return fmt.Errorf("checking alert threshold: %w", err)
+		}
+
+		// For multi-region checks, also check if enough regions are failing
+		if shouldAlert && multiRegionThreshold > 0 && len(check.Regions) > 0 {
+			failingRegions, err := store.CountFailingRegions(check.ID)
+			if err != nil {
+				return fmt.Errorf("counting failing regions: %w", err)
+			}
+			// Only alert if at least multiRegionThreshold regions are failing
+			if failingRegions < multiRegionThreshold {
+				shouldAlert = false
+			}
 		}
 
 		if shouldAlert {

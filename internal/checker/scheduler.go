@@ -22,10 +22,11 @@ type Scheduler struct {
 }
 
 type SchedulerConfig struct {
-	ConsecutiveFailures int
-	RetentionDays       int
-	AggregatesDays      int
-	SSLExpiryDays       int
+	ConsecutiveFailures       int
+	RetentionDays             int
+	AggregatesDays            int
+	SSLExpiryDays             int
+	MultiRegionAlertThreshold int // Min failing regions to alert (0 = alert on any)
 }
 
 type scheduledCheck struct {
@@ -221,7 +222,7 @@ func (s *Scheduler) executeCheck(check *storage.Check, checker *HTTPChecker) {
 	if len(current.Regions) > 0 {
 		for _, region := range current.Regions {
 			response := checker.Execute(req)
-			if err := ProcessResultWithRegion(s.storage, s.alerter, current, response, s.config.ConsecutiveFailures, region); err != nil {
+			if err := ProcessResultWithOptions(s.storage, s.alerter, current, response, s.config.ConsecutiveFailures, region, s.config.MultiRegionAlertThreshold); err != nil {
 				fmt.Printf("error processing result for %s (region %s): %v\n", current.Name, region, err)
 			}
 			s.handleSSLAlert(current, response)
@@ -305,7 +306,7 @@ func (s *Scheduler) TriggerCheck(checkID int64) (*CheckResponse, error) {
 	if len(check.Regions) > 0 {
 		for _, region := range check.Regions {
 			response := checker.Execute(req)
-			if err := ProcessResultWithRegion(s.storage, s.alerter, check, response, s.config.ConsecutiveFailures, region); err != nil {
+			if err := ProcessResultWithOptions(s.storage, s.alerter, check, response, s.config.ConsecutiveFailures, region, s.config.MultiRegionAlertThreshold); err != nil {
 				return nil, fmt.Errorf("processing result for region %s: %w", region, err)
 			}
 			lastResponse = response
