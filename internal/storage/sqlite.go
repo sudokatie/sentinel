@@ -129,6 +129,8 @@ func (s *SQLiteStorage) Migrate() error {
 		// Incident management columns
 		`ALTER TABLE incidents ADD COLUMN status TEXT DEFAULT 'investigating'`,
 		`ALTER TABLE incidents ADD COLUMN title TEXT`,
+		// Multi-region support
+		`ALTER TABLE check_results ADD COLUMN region TEXT DEFAULT ''`,
 	}
 	for _, m := range optionalMigrations {
 		s.db.Exec(m) // Ignore errors (column already exists)
@@ -314,9 +316,9 @@ func (s *SQLiteStorage) scanChecks(rows *sql.Rows) ([]*Check, error) {
 
 func (s *SQLiteStorage) SaveResult(result *CheckResult) error {
 	res, err := s.db.Exec(`
-		INSERT INTO check_results (check_id, status, status_code, response_time_ms, error_message, checked_at, ssl_expires_at, ssl_days_left, ssl_issuer)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, result.CheckID, result.Status, result.StatusCode, result.ResponseTimeMs, result.ErrorMessage, time.Now(),
+		INSERT INTO check_results (check_id, region, status, status_code, response_time_ms, error_message, checked_at, ssl_expires_at, ssl_days_left, ssl_issuer)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, result.CheckID, result.Region, result.Status, result.StatusCode, result.ResponseTimeMs, result.ErrorMessage, time.Now(),
 		result.SSLExpiresAt, result.SSLDaysLeft, result.SSLIssuer)
 	if err != nil {
 		return fmt.Errorf("inserting result: %w", err)
@@ -334,7 +336,7 @@ func (s *SQLiteStorage) SaveResult(result *CheckResult) error {
 
 func (s *SQLiteStorage) GetResults(checkID int64, limit int, offset int) ([]*CheckResult, error) {
 	rows, err := s.db.Query(`
-		SELECT id, check_id, status, status_code, response_time_ms, error_message, checked_at
+		SELECT id, check_id, COALESCE(region, '') as region, status, status_code, response_time_ms, error_message, checked_at
 		FROM check_results WHERE check_id = ? ORDER BY checked_at DESC LIMIT ? OFFSET ?
 	`, checkID, limit, offset)
 	if err != nil {
@@ -347,7 +349,7 @@ func (s *SQLiteStorage) GetResults(checkID int64, limit int, offset int) ([]*Che
 
 func (s *SQLiteStorage) GetLatestResult(checkID int64) (*CheckResult, error) {
 	row := s.db.QueryRow(`
-		SELECT id, check_id, status, status_code, response_time_ms, error_message, checked_at
+		SELECT id, check_id, COALESCE(region, '') as region, status, status_code, response_time_ms, error_message, checked_at
 		FROM check_results WHERE check_id = ? ORDER BY checked_at DESC LIMIT 1
 	`, checkID)
 
@@ -355,7 +357,7 @@ func (s *SQLiteStorage) GetLatestResult(checkID int64) (*CheckResult, error) {
 	var errMsg sql.NullString
 
 	err := row.Scan(
-		&result.ID, &result.CheckID, &result.Status, &result.StatusCode,
+		&result.ID, &result.CheckID, &result.Region, &result.Status, &result.StatusCode,
 		&result.ResponseTimeMs, &errMsg, &result.CheckedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -374,7 +376,7 @@ func (s *SQLiteStorage) GetLatestResult(checkID int64) (*CheckResult, error) {
 
 func (s *SQLiteStorage) GetResultsInRange(checkID int64, start, end time.Time) ([]*CheckResult, error) {
 	rows, err := s.db.Query(`
-		SELECT id, check_id, status, status_code, response_time_ms, error_message, checked_at
+		SELECT id, check_id, COALESCE(region, '') as region, status, status_code, response_time_ms, error_message, checked_at
 		FROM check_results WHERE check_id = ? AND checked_at BETWEEN ? AND ? ORDER BY checked_at
 	`, checkID, start, end)
 	if err != nil {
@@ -444,7 +446,7 @@ func (s *SQLiteStorage) scanResults(rows *sql.Rows) ([]*CheckResult, error) {
 		var errMsg sql.NullString
 
 		err := rows.Scan(
-			&result.ID, &result.CheckID, &result.Status, &result.StatusCode,
+			&result.ID, &result.CheckID, &result.Region, &result.Status, &result.StatusCode,
 			&result.ResponseTimeMs, &errMsg, &result.CheckedAt,
 		)
 		if err != nil {

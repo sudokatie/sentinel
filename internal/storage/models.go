@@ -37,7 +37,8 @@ func (c *Check) IsPending() bool {
 type CheckResult struct {
 	ID             int64      `json:"id"`
 	CheckID        int64      `json:"check_id"`
-	Status         string     `json:"status"` // "up" or "down"
+	Region         string     `json:"region,omitempty"` // Region code (e.g., "us", "eu") or empty for single-region
+	Status         string     `json:"status"`           // "up" or "down"
 	StatusCode     int        `json:"status_code"`
 	ResponseTimeMs int        `json:"response_time_ms"`
 	ErrorMessage   string     `json:"error_message,omitempty"`

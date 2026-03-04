@@ -15,6 +15,7 @@ type Config struct {
 	Database  DatabaseConfig  `yaml:"database"`
 	Alerts    AlertsConfig    `yaml:"alerts"`
 	Retention RetentionConfig `yaml:"retention"`
+	Regions   []RegionConfig  `yaml:"regions"` // Optional probe regions for multi-region checks
 	Checks    []CheckConfig   `yaml:"checks"`
 }
 
@@ -73,6 +74,14 @@ type CheckConfig struct {
 	ExpectedStatus int      `yaml:"expected_status"`
 	Enabled        *bool    `yaml:"enabled"`
 	Tags           []string `yaml:"tags"`
+	Regions        []string `yaml:"regions"` // Optional: run check from multiple regions (us, eu, apac)
+}
+
+// RegionConfig defines a probe region.
+type RegionConfig struct {
+	Name     string `yaml:"name"`      // Display name (e.g., "US East")
+	Code     string `yaml:"code"`      // Short code (e.g., "us")
+	ProbeURL string `yaml:"probe_url"` // URL of remote probe (optional, empty = local)
 }
 
 func DefaultConfig() *Config {
