@@ -13,6 +13,7 @@ type Check struct {
 	ExpectedStatus int       `json:"expected_status"`
 	Enabled        bool      `json:"enabled"`
 	Tags           []string  `json:"tags"`
+	Regions        []string  `json:"regions,omitempty"` // Region codes for multi-region checks
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 
@@ -169,6 +170,7 @@ type CreateCheckInput struct {
 	ExpectedStatus int      `json:"expected_status,omitempty"`
 	Enabled        *bool    `json:"enabled,omitempty"`
 	Tags           []string `json:"tags,omitempty"`
+	Regions        []string `json:"regions,omitempty"`
 }
 
 func (i *CreateCheckInput) ToCheck() *Check {
@@ -200,5 +202,6 @@ func (i *CreateCheckInput) ToCheck() *Check {
 		ExpectedStatus: expectedStatus,
 		Enabled:        enabled,
 		Tags:           i.Tags,
+		Regions:        i.Regions,
 	}
 }

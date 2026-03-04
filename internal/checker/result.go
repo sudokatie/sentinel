@@ -15,12 +15,18 @@ type Alerter interface {
 
 // ProcessResult handles a check response: saves result, detects state changes, manages incidents
 func ProcessResult(store storage.Storage, alerter Alerter, check *storage.Check, response *CheckResponse, consecutiveFailures int) error {
+	return ProcessResultWithRegion(store, alerter, check, response, consecutiveFailures, "")
+}
+
+// ProcessResultWithRegion handles a check response with optional region tag
+func ProcessResultWithRegion(store storage.Storage, alerter Alerter, check *storage.Check, response *CheckResponse, consecutiveFailures int, region string) error {
 	// Determine status
 	status := DetermineStatus(response, check.ExpectedStatus)
 
 	// Build result
 	result := &storage.CheckResult{
 		CheckID:        check.ID,
+		Region:         region,
 		Status:         status,
 		StatusCode:     response.StatusCode,
 		ResponseTimeMs: response.ResponseTimeMs,

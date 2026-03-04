@@ -210,26 +210,40 @@ func (s *Scheduler) executeCheck(check *storage.Check, checker *HTTPChecker) {
 		current.Status = "pending"
 	}
 
-	// Execute the check
-	response := checker.Execute(&CheckRequest{
+	// Build the check request
+	req := &CheckRequest{
 		URL:            current.URL,
 		Timeout:        time.Duration(current.TimeoutSecs) * time.Second,
 		ExpectedStatus: current.ExpectedStatus,
-	})
-
-	// Process the result
-	if err := ProcessResult(s.storage, s.alerter, current, response, s.config.ConsecutiveFailures); err != nil {
-		fmt.Printf("error processing result for %s: %v\n", current.Name, err)
 	}
 
-	// Check SSL expiry and alert if necessary
+	// If check has regions configured, execute once per region
+	if len(current.Regions) > 0 {
+		for _, region := range current.Regions {
+			response := checker.Execute(req)
+			if err := ProcessResultWithRegion(s.storage, s.alerter, current, response, s.config.ConsecutiveFailures, region); err != nil {
+				fmt.Printf("error processing result for %s (region %s): %v\n", current.Name, region, err)
+			}
+			s.handleSSLAlert(current, response)
+		}
+	} else {
+		// No regions configured, execute once without region tag
+		response := checker.Execute(req)
+		if err := ProcessResult(s.storage, s.alerter, current, response, s.config.ConsecutiveFailures); err != nil {
+			fmt.Printf("error processing result for %s: %v\n", current.Name, err)
+		}
+		s.handleSSLAlert(current, response)
+	}
+}
+
+func (s *Scheduler) handleSSLAlert(check *storage.Check, response *CheckResponse) {
 	if s.config.SSLExpiryDays > 0 && response.SSLExpiresAt != nil {
 		if response.SSLDaysLeft <= s.config.SSLExpiryDays {
 			if sslAlerter, ok := s.alerter.(interface {
 				SendSSLExpiryAlert(*storage.Check, int, time.Time) error
 			}); ok {
-				if err := sslAlerter.SendSSLExpiryAlert(current, response.SSLDaysLeft, *response.SSLExpiresAt); err != nil {
-					fmt.Printf("error sending SSL expiry alert for %s: %v\n", current.Name, err)
+				if err := sslAlerter.SendSSLExpiryAlert(check, response.SSLDaysLeft, *response.SSLExpiresAt); err != nil {
+					fmt.Printf("error sending SSL expiry alert for %s: %v\n", check.Name, err)
 				}
 			}
 		}
@@ -279,18 +293,31 @@ func (s *Scheduler) TriggerCheck(checkID int64) (*CheckResponse, error) {
 	}
 
 	checker := NewHTTPChecker()
-	response := checker.Execute(&CheckRequest{
+	req := &CheckRequest{
 		URL:            check.URL,
 		Timeout:        time.Duration(check.TimeoutSecs) * time.Second,
 		ExpectedStatus: check.ExpectedStatus,
-	})
-
-	// Process and save the result
-	if err := ProcessResult(s.storage, s.alerter, check, response, s.config.ConsecutiveFailures); err != nil {
-		return nil, fmt.Errorf("processing result: %w", err)
 	}
 
-	return response, nil
+	var lastResponse *CheckResponse
+
+	// If check has regions configured, execute once per region
+	if len(check.Regions) > 0 {
+		for _, region := range check.Regions {
+			response := checker.Execute(req)
+			if err := ProcessResultWithRegion(s.storage, s.alerter, check, response, s.config.ConsecutiveFailures, region); err != nil {
+				return nil, fmt.Errorf("processing result for region %s: %w", region, err)
+			}
+			lastResponse = response
+		}
+	} else {
+		lastResponse = checker.Execute(req)
+		if err := ProcessResult(s.storage, s.alerter, check, lastResponse, s.config.ConsecutiveFailures); err != nil {
+			return nil, fmt.Errorf("processing result: %w", err)
+		}
+	}
+
+	return lastResponse, nil
 }
 
 func (s *Scheduler) ReloadChecks() error {

@@ -131,6 +131,7 @@ func (s *SQLiteStorage) Migrate() error {
 		`ALTER TABLE incidents ADD COLUMN title TEXT`,
 		// Multi-region support
 		`ALTER TABLE check_results ADD COLUMN region TEXT DEFAULT ''`,
+		`ALTER TABLE checks ADD COLUMN regions TEXT DEFAULT ''`,
 	}
 	for _, m := range optionalMigrations {
 		s.db.Exec(m) // Ignore errors (column already exists)
@@ -151,10 +152,15 @@ func (s *SQLiteStorage) CreateCheck(check *Check) error {
 		return fmt.Errorf("marshaling tags: %w", err)
 	}
 
+	regionsJSON, err := json.Marshal(check.Regions)
+	if err != nil {
+		return fmt.Errorf("marshaling regions: %w", err)
+	}
+
 	result, err := s.db.Exec(`
-		INSERT INTO checks (name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, check.Name, check.URL, check.IntervalSecs, check.TimeoutSecs, check.ExpectedStatus, check.Enabled, string(tagsJSON), time.Now(), time.Now())
+		INSERT INTO checks (name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, check.Name, check.URL, check.IntervalSecs, check.TimeoutSecs, check.ExpectedStatus, check.Enabled, string(tagsJSON), string(regionsJSON), time.Now(), time.Now())
 	if err != nil {
 		return fmt.Errorf("inserting check: %w", err)
 	}
@@ -172,7 +178,7 @@ func (s *SQLiteStorage) CreateCheck(check *Check) error {
 
 func (s *SQLiteStorage) GetCheck(id int64) (*Check, error) {
 	row := s.db.QueryRow(`
-		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, created_at, updated_at
+		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, created_at, updated_at
 		FROM checks WHERE id = ?
 	`, id)
 
@@ -181,7 +187,7 @@ func (s *SQLiteStorage) GetCheck(id int64) (*Check, error) {
 
 func (s *SQLiteStorage) GetCheckByURL(url string) (*Check, error) {
 	row := s.db.QueryRow(`
-		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, created_at, updated_at
+		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, created_at, updated_at
 		FROM checks WHERE url = ?
 	`, url)
 
@@ -190,7 +196,7 @@ func (s *SQLiteStorage) GetCheckByURL(url string) (*Check, error) {
 
 func (s *SQLiteStorage) ListChecks() ([]*Check, error) {
 	rows, err := s.db.Query(`
-		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, created_at, updated_at
+		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, created_at, updated_at
 		FROM checks ORDER BY name
 	`)
 	if err != nil {
@@ -203,7 +209,7 @@ func (s *SQLiteStorage) ListChecks() ([]*Check, error) {
 
 func (s *SQLiteStorage) ListEnabledChecks() ([]*Check, error) {
 	rows, err := s.db.Query(`
-		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, created_at, updated_at
+		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, created_at, updated_at
 		FROM checks WHERE enabled = 1 ORDER BY name
 	`)
 	if err != nil {
@@ -239,10 +245,15 @@ func (s *SQLiteStorage) UpdateCheck(check *Check) error {
 		return fmt.Errorf("marshaling tags: %w", err)
 	}
 
+	regionsJSON, err := json.Marshal(check.Regions)
+	if err != nil {
+		return fmt.Errorf("marshaling regions: %w", err)
+	}
+
 	_, err = s.db.Exec(`
-		UPDATE checks SET name = ?, url = ?, interval_seconds = ?, timeout_seconds = ?, expected_status = ?, enabled = ?, tags = ?, updated_at = ?
+		UPDATE checks SET name = ?, url = ?, interval_seconds = ?, timeout_seconds = ?, expected_status = ?, enabled = ?, tags = ?, regions = ?, updated_at = ?
 		WHERE id = ?
-	`, check.Name, check.URL, check.IntervalSecs, check.TimeoutSecs, check.ExpectedStatus, check.Enabled, string(tagsJSON), time.Now(), check.ID)
+	`, check.Name, check.URL, check.IntervalSecs, check.TimeoutSecs, check.ExpectedStatus, check.Enabled, string(tagsJSON), string(regionsJSON), time.Now(), check.ID)
 	if err != nil {
 		return fmt.Errorf("updating check: %w", err)
 	}
@@ -262,10 +273,11 @@ func (s *SQLiteStorage) DeleteCheck(id int64) error {
 func (s *SQLiteStorage) scanCheck(row *sql.Row) (*Check, error) {
 	var check Check
 	var tagsJSON sql.NullString
+	var regionsJSON sql.NullString
 
 	err := row.Scan(
 		&check.ID, &check.Name, &check.URL, &check.IntervalSecs, &check.TimeoutSecs,
-		&check.ExpectedStatus, &check.Enabled, &tagsJSON, &check.CreatedAt, &check.UpdatedAt,
+		&check.ExpectedStatus, &check.Enabled, &tagsJSON, &regionsJSON, &check.CreatedAt, &check.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -280,6 +292,12 @@ func (s *SQLiteStorage) scanCheck(row *sql.Row) (*Check, error) {
 		}
 	}
 
+	if regionsJSON.Valid && regionsJSON.String != "" {
+		if err := json.Unmarshal([]byte(regionsJSON.String), &check.Regions); err != nil {
+			check.Regions = []string{}
+		}
+	}
+
 	check.Status = "pending"
 	return &check, nil
 }
@@ -290,10 +308,11 @@ func (s *SQLiteStorage) scanChecks(rows *sql.Rows) ([]*Check, error) {
 	for rows.Next() {
 		var check Check
 		var tagsJSON sql.NullString
+		var regionsJSON sql.NullString
 
 		err := rows.Scan(
 			&check.ID, &check.Name, &check.URL, &check.IntervalSecs, &check.TimeoutSecs,
-			&check.ExpectedStatus, &check.Enabled, &tagsJSON, &check.CreatedAt, &check.UpdatedAt,
+			&check.ExpectedStatus, &check.Enabled, &tagsJSON, &regionsJSON, &check.CreatedAt, &check.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning check: %w", err)
@@ -302,6 +321,12 @@ func (s *SQLiteStorage) scanChecks(rows *sql.Rows) ([]*Check, error) {
 		if tagsJSON.Valid && tagsJSON.String != "" {
 			if err := json.Unmarshal([]byte(tagsJSON.String), &check.Tags); err != nil {
 				check.Tags = []string{}
+			}
+		}
+
+		if regionsJSON.Valid && regionsJSON.String != "" {
+			if err := json.Unmarshal([]byte(regionsJSON.String), &check.Regions); err != nil {
+				check.Regions = []string{}
 			}
 		}
 

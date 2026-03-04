@@ -248,3 +248,101 @@ func TestSchedulerUpdateCheck(t *testing.T) {
 
 	scheduler.Stop()
 }
+
+func TestSchedulerMultiRegionCheck(t *testing.T) {
+	store, server := setupSchedulerTest(t)
+
+	// Create a check with multiple regions
+	check := &storage.Check{
+		Name:           "Multi-Region Check",
+		URL:            server.URL,
+		IntervalSecs:   1,
+		TimeoutSecs:    5,
+		ExpectedStatus: 200,
+		Enabled:        true,
+		Regions:        []string{"us", "eu", "apac"},
+	}
+	if err := store.CreateCheck(check); err != nil {
+		t.Fatalf("failed to create check: %v", err)
+	}
+
+	scheduler := NewScheduler(store, nil, SchedulerConfig{ConsecutiveFailures: 2})
+
+	if err := scheduler.Start(); err != nil {
+		t.Fatalf("failed to start scheduler: %v", err)
+	}
+
+	// Wait for check to execute
+	time.Sleep(500 * time.Millisecond)
+
+	scheduler.Stop()
+
+	// Verify results were saved for each region
+	results, err := store.GetResults(check.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("failed to get results: %v", err)
+	}
+
+	// Should have at least 3 results (one per region)
+	if len(results) < 3 {
+		t.Errorf("expected at least 3 results for multi-region check, got %d", len(results))
+	}
+
+	// Count results per region
+	regionCounts := make(map[string]int)
+	for _, r := range results {
+		regionCounts[r.Region]++
+	}
+
+	// Verify we have results for each configured region
+	for _, region := range []string{"us", "eu", "apac"} {
+		if regionCounts[region] == 0 {
+			t.Errorf("expected results for region %s, got none", region)
+		}
+	}
+}
+
+func TestSchedulerSingleRegionCheck(t *testing.T) {
+	store, server := setupSchedulerTest(t)
+
+	// Create a check without regions (backward compatibility)
+	check := &storage.Check{
+		Name:           "Single Region Check",
+		URL:            server.URL,
+		IntervalSecs:   1,
+		TimeoutSecs:    5,
+		ExpectedStatus: 200,
+		Enabled:        true,
+	}
+	if err := store.CreateCheck(check); err != nil {
+		t.Fatalf("failed to create check: %v", err)
+	}
+
+	scheduler := NewScheduler(store, nil, SchedulerConfig{ConsecutiveFailures: 2})
+
+	if err := scheduler.Start(); err != nil {
+		t.Fatalf("failed to start scheduler: %v", err)
+	}
+
+	// Wait for check to execute
+	time.Sleep(500 * time.Millisecond)
+
+	scheduler.Stop()
+
+	// Verify at least one result was saved with empty region
+	results, err := store.GetResults(check.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("failed to get results: %v", err)
+	}
+
+	if len(results) < 1 {
+		t.Error("expected at least one result")
+	}
+
+	// Region should be empty for non-regional checks
+	for _, r := range results {
+		if r.Region != "" {
+			t.Errorf("expected empty region for single-region check, got %q", r.Region)
+		}
+	}
+}
