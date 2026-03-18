@@ -22,6 +22,7 @@ Sentinel is a single binary that checks your endpoints, tracks response times, s
 - Single binary deployment (download, run, done)
 - REST API for automation (because clicking buttons is for amateurs)
 - Hourly data aggregation (keeps 90 days of history without filling your disk)
+- Synthetic monitoring (run Playwright scripts as health checks)
 
 ## Quick Start
 
@@ -153,6 +154,43 @@ The status page shows:
 - 24-hour sparkline for each service
 
 No login required. No branding (yet).
+
+## Synthetic Monitoring
+
+Run Playwright scripts to test actual user flows. HTTP checks tell you if the server responds. Synthetic checks tell you if the login button works.
+
+```go
+import "github.com/katieblackabee/sentinel/internal/checker"
+
+// Create a synthetic checker
+synth := checker.NewSyntheticChecker("/var/screenshots")
+
+// Run a Playwright script
+response := synth.Execute(&checker.SyntheticRequest{
+    ScriptPath: "/scripts/login-flow.spec.ts",
+    Timeout:    30 * time.Second,
+    Name:       "Login Flow",
+})
+
+// Check results
+if response.Success {
+    fmt.Printf("Total time: %dms\n", response.TotalDurationMs)
+    fmt.Println(response.StepSummary())
+} else {
+    fmt.Printf("Failed: %s\n", response.Error)
+    fmt.Printf("Screenshot: %s\n", response.ScreenshotPath)
+}
+```
+
+Features:
+- Step-by-step timing breakdown
+- Screenshots on failure (so you can see what went wrong)
+- JSON output parsing from Playwright reporter
+- Timeout handling (because hung scripts are worse than failed ones)
+
+Requirements:
+- Node.js and npx available in PATH
+- Playwright installed (`npm install -D @playwright/test`)
 
 ## API
 
