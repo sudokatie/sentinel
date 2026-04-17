@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -204,4 +205,29 @@ func (i *CreateCheckInput) ToCheck() *Check {
 		Tags:           i.Tags,
 		Regions:        i.Regions,
 	}
+}
+
+type Probe struct {
+	ID            int64
+	Name          string
+	Region        string
+	City          sql.NullString
+	Country       sql.NullString
+	Latitude      sql.NullFloat64
+	Longitude     sql.NullFloat64
+	APIKey        string
+	Status        string
+	LastHeartbeat sql.NullTime
+	CreatedAt     sql.NullTime
+}
+
+type ProbeResult struct {
+	ID             int64
+	CheckID        int64
+	ProbeID        int64
+	Status         string
+	ResponseTimeMs sql.NullInt64
+	StatusCode     sql.NullInt64
+	Error          sql.NullString
+	CheckedAt      time.Time
 }

@@ -56,4 +56,23 @@ type Storage interface {
 	AggregateResults(olderThan time.Time) error
 	CleanupOldAggregates(olderThan time.Time) error
 	Close() error
+
+	// Probes
+	CreateProbe(probe *Probe) error
+	GetProbe(id int64) (*Probe, error)
+	GetProbeByAPIKey(apiKey string) (*Probe, error)
+	ListProbes() ([]*Probe, error)
+	ListActiveProbes() ([]*Probe, error)
+	ListProbesByRegion(region string) ([]*Probe, error)
+	UpdateProbeHeartbeat(id int64) error
+	UpdateProbeStatus(id int64, status string) error
+	DeleteProbe(id int64) error
+	CleanupStaleProbes() (int, error)
+
+	// Probe Results
+	SaveProbeResult(result *ProbeResult) error
+	GetProbeResults(checkID int64, limit int, offset int) ([]*ProbeResult, error)
+	GetProbeResultsByProbe(probeID int64, limit int) ([]*ProbeResult, error)
+	GetLatestProbeResultsByRegion(checkID int64) (map[string]*ProbeResult, error)
+	CountFailingProbeRegions(checkID int64) (int, error)
 }

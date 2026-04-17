@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -1108,4 +1109,481 @@ func TestCheckWithEmptyTags(t *testing.T) {
 	if got.Tags == nil {
 		// This is acceptable - nil and empty slice are both valid
 	}
+}
+
+// Probe Tests
+
+func TestCreateAndGetProbe(t *testing.T) {
+	s := setupTestDB(t)
+
+	probe := &Probe{
+		Name:   "US East Probe",
+		Region: "us-east",
+		APIKey: "test-api-key-123",
+		Status: "active",
+	}
+
+	if err := s.CreateProbe(probe); err != nil {
+		t.Fatalf("failed to create probe: %v", err)
+	}
+
+	if probe.ID == 0 {
+		t.Error("expected probe ID to be set")
+	}
+
+	// Get by ID
+	got, err := s.GetProbe(probe.ID)
+	if err != nil {
+		t.Fatalf("failed to get probe: %v", err)
+	}
+
+	if got.Name != probe.Name {
+		t.Errorf("expected name %s, got %s", probe.Name, got.Name)
+	}
+	if got.Region != probe.Region {
+		t.Errorf("expected region %s, got %s", probe.Region, got.Region)
+	}
+	if got.APIKey != probe.APIKey {
+		t.Errorf("expected api_key %s, got %s", probe.APIKey, got.APIKey)
+	}
+
+	// Get by API Key
+	got, err = s.GetProbeByAPIKey(probe.APIKey)
+	if err != nil {
+		t.Fatalf("failed to get probe by api key: %v", err)
+	}
+	if got.ID != probe.ID {
+		t.Error("expected same probe")
+	}
+}
+
+func TestGetProbeNotFound(t *testing.T) {
+	s := setupTestDB(t)
+
+	got, err := s.GetProbe(999)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != nil {
+		t.Error("expected nil for non-existent probe")
+	}
+}
+
+func TestGetProbeByAPIKeyNotFound(t *testing.T) {
+	s := setupTestDB(t)
+
+	got, err := s.GetProbeByAPIKey("nonexistent-key")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != nil {
+		t.Error("expected nil for non-existent API key")
+	}
+}
+
+func TestListProbes(t *testing.T) {
+	s := setupTestDB(t)
+
+	probes := []*Probe{
+		{Name: "Probe A", Region: "us-east", APIKey: "key-a", Status: "active"},
+		{Name: "Probe B", Region: "eu-west", APIKey: "key-b", Status: "active"},
+		{Name: "Probe C", Region: "us-east", APIKey: "key-c", Status: "inactive"},
+	}
+
+	for _, p := range probes {
+		if err := s.CreateProbe(p); err != nil {
+			t.Fatalf("failed to create probe: %v", err)
+		}
+	}
+
+	// List all
+	all, err := s.ListProbes()
+	if err != nil {
+		t.Fatalf("failed to list probes: %v", err)
+	}
+	if len(all) != 3 {
+		t.Errorf("expected 3 probes, got %d", len(all))
+	}
+
+	// List active only
+	active, err := s.ListActiveProbes()
+	if err != nil {
+		t.Fatalf("failed to list active probes: %v", err)
+	}
+	if len(active) != 2 {
+		t.Errorf("expected 2 active probes, got %d", len(active))
+	}
+
+	// List by region
+	usEast, err := s.ListProbesByRegion("us-east")
+	if err != nil {
+		t.Fatalf("failed to list probes by region: %v", err)
+	}
+	if len(usEast) != 2 {
+		t.Errorf("expected 2 us-east probes, got %d", len(usEast))
+	}
+}
+
+func TestUpdateProbeHeartbeat(t *testing.T) {
+	s := setupTestDB(t)
+
+	probe := &Probe{
+		Name:   "Heartbeat Probe",
+		Region: "us-east",
+		APIKey: "heartbeat-key",
+		Status: "active",
+	}
+	if err := s.CreateProbe(probe); err != nil {
+		t.Fatalf("failed to create probe: %v", err)
+	}
+
+	// Update heartbeat
+	if err := s.UpdateProbeHeartbeat(probe.ID); err != nil {
+		t.Fatalf("failed to update heartbeat: %v", err)
+	}
+
+	got, err := s.GetProbe(probe.ID)
+	if err != nil {
+		t.Fatalf("failed to get probe: %v", err)
+	}
+
+	if !got.LastHeartbeat.Valid {
+		t.Error("expected last_heartbeat to be set")
+	}
+}
+
+func TestUpdateProbeStatus(t *testing.T) {
+	s := setupTestDB(t)
+
+	probe := &Probe{
+		Name:   "Status Probe",
+		Region: "us-east",
+		APIKey: "status-key",
+		Status: "active",
+	}
+	if err := s.CreateProbe(probe); err != nil {
+		t.Fatalf("failed to create probe: %v", err)
+	}
+
+	// Update status
+	if err := s.UpdateProbeStatus(probe.ID, "inactive"); err != nil {
+		t.Fatalf("failed to update status: %v", err)
+	}
+
+	got, err := s.GetProbe(probe.ID)
+	if err != nil {
+		t.Fatalf("failed to get probe: %v", err)
+	}
+
+	if got.Status != "inactive" {
+		t.Errorf("expected status inactive, got %s", got.Status)
+	}
+}
+
+func TestDeleteProbe(t *testing.T) {
+	s := setupTestDB(t)
+
+	probe := &Probe{
+		Name:   "To Delete",
+		Region: "us-east",
+		APIKey: "delete-key",
+		Status: "active",
+	}
+	if err := s.CreateProbe(probe); err != nil {
+		t.Fatalf("failed to create probe: %v", err)
+	}
+
+	if err := s.DeleteProbe(probe.ID); err != nil {
+		t.Fatalf("failed to delete probe: %v", err)
+	}
+
+	got, err := s.GetProbe(probe.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != nil {
+		t.Error("expected nil after delete")
+	}
+}
+
+func TestCleanupStaleProbes(t *testing.T) {
+	s := setupTestDB(t)
+
+	// Create probe without heartbeat (should be marked stale)
+	staleProbe := &Probe{
+		Name:   "Stale Probe",
+		Region: "us-east",
+		APIKey: "stale-key",
+		Status: "active",
+	}
+	if err := s.CreateProbe(staleProbe); err != nil {
+		t.Fatalf("failed to create probe: %v", err)
+	}
+
+	// Create probe with recent heartbeat
+	activeProbe := &Probe{
+		Name:   "Active Probe",
+		Region: "us-east",
+		APIKey: "active-key",
+		Status: "active",
+	}
+	if err := s.CreateProbe(activeProbe); err != nil {
+		t.Fatalf("failed to create probe: %v", err)
+	}
+	s.UpdateProbeHeartbeat(activeProbe.ID)
+
+	// Cleanup stale probes
+	count, err := s.CleanupStaleProbes()
+	if err != nil {
+		t.Fatalf("failed to cleanup stale probes: %v", err)
+	}
+
+	// The stale probe should be marked inactive
+	if count != 1 {
+		t.Errorf("expected 1 stale probe, got %d", count)
+	}
+
+	got, _ := s.GetProbe(staleProbe.ID)
+	if got.Status != "inactive" {
+		t.Errorf("expected stale probe to be inactive, got %s", got.Status)
+	}
+
+	got, _ = s.GetProbe(activeProbe.ID)
+	if got.Status != "active" {
+		t.Errorf("expected active probe to remain active, got %s", got.Status)
+	}
+}
+
+func TestProbeWithOptionalFields(t *testing.T) {
+	s := setupTestDB(t)
+
+	probe := &Probe{
+		Name:   "Full Probe",
+		Region: "us-east",
+		City:   newNullString("New York"),
+		Country: newNullString("USA"),
+		Latitude: newNullFloat64(40.7128),
+		Longitude: newNullFloat64(-74.0060),
+		APIKey: "full-key",
+		Status: "active",
+	}
+
+	if err := s.CreateProbe(probe); err != nil {
+		t.Fatalf("failed to create probe: %v", err)
+	}
+
+	got, err := s.GetProbe(probe.ID)
+	if err != nil {
+		t.Fatalf("failed to get probe: %v", err)
+	}
+
+	if !got.City.Valid || got.City.String != "New York" {
+		t.Errorf("expected city New York, got %v", got.City)
+	}
+	if !got.Country.Valid || got.Country.String != "USA" {
+		t.Errorf("expected country USA, got %v", got.Country)
+	}
+	if !got.Latitude.Valid || got.Latitude.Float64 != 40.7128 {
+		t.Errorf("expected latitude 40.7128, got %v", got.Latitude)
+	}
+	if !got.Longitude.Valid || got.Longitude.Float64 != -74.0060 {
+		t.Errorf("expected longitude -74.0060, got %v", got.Longitude)
+	}
+}
+
+// Probe Result Tests
+
+func TestSaveAndGetProbeResults(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{
+		Name:           "Test Check",
+		URL:            "https://test.com",
+		IntervalSecs:   60,
+		TimeoutSecs:    10,
+		ExpectedStatus: 200,
+		Enabled:        true,
+	}
+	if err := s.CreateCheck(check); err != nil {
+		t.Fatalf("failed to create check: %v", err)
+	}
+
+	probe := &Probe{
+		Name:   "Test Probe",
+		Region: "us-east",
+		APIKey: "result-key",
+		Status: "active",
+	}
+	if err := s.CreateProbe(probe); err != nil {
+		t.Fatalf("failed to create probe: %v", err)
+	}
+
+	// Save results
+	results := []*ProbeResult{
+		{CheckID: check.ID, ProbeID: probe.ID, Status: "up", ResponseTimeMs: newNullInt64(100), StatusCode: newNullInt64(200), CheckedAt: time.Now()},
+		{CheckID: check.ID, ProbeID: probe.ID, Status: "up", ResponseTimeMs: newNullInt64(150), StatusCode: newNullInt64(200), CheckedAt: time.Now().Add(time.Second)},
+		{CheckID: check.ID, ProbeID: probe.ID, Status: "down", Error: newNullString("timeout"), CheckedAt: time.Now().Add(2 * time.Second)},
+	}
+
+	for _, r := range results {
+		if err := s.SaveProbeResult(r); err != nil {
+			t.Fatalf("failed to save probe result: %v", err)
+		}
+	}
+
+	// Get by check ID
+	got, err := s.GetProbeResults(check.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("failed to get probe results: %v", err)
+	}
+	if len(got) != 3 {
+		t.Errorf("expected 3 results, got %d", len(got))
+	}
+
+	// Get by probe ID
+	gotByProbe, err := s.GetProbeResultsByProbe(probe.ID, 10)
+	if err != nil {
+		t.Fatalf("failed to get probe results by probe: %v", err)
+	}
+	if len(gotByProbe) != 3 {
+		t.Errorf("expected 3 results, got %d", len(gotByProbe))
+	}
+}
+
+func TestGetProbeResultsPagination(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{Name: "Pagination Check", URL: "https://pagination.com", IntervalSecs: 60, TimeoutSecs: 10, ExpectedStatus: 200, Enabled: true}
+	s.CreateCheck(check)
+
+	probe := &Probe{Name: "Pagination Probe", Region: "us-east", APIKey: "pagination-key", Status: "active"}
+	s.CreateProbe(probe)
+
+	// Save 10 results
+	for i := 0; i < 10; i++ {
+		result := &ProbeResult{
+			CheckID:   check.ID,
+			ProbeID:   probe.ID,
+			Status:    "up",
+			CheckedAt: time.Now().Add(time.Duration(i) * time.Second),
+		}
+		s.SaveProbeResult(result)
+	}
+
+	// Get with limit
+	got, err := s.GetProbeResults(check.ID, 5, 0)
+	if err != nil {
+		t.Fatalf("failed to get probe results: %v", err)
+	}
+	if len(got) != 5 {
+		t.Errorf("expected 5 results with limit, got %d", len(got))
+	}
+
+	// Get with offset
+	got, err = s.GetProbeResults(check.ID, 10, 5)
+	if err != nil {
+		t.Fatalf("failed to get probe results with offset: %v", err)
+	}
+	if len(got) != 5 {
+		t.Errorf("expected 5 results with offset, got %d", len(got))
+	}
+}
+
+func TestGetLatestProbeResultsByRegion(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{Name: "Region Check", URL: "https://region.com", IntervalSecs: 60, TimeoutSecs: 10, ExpectedStatus: 200, Enabled: true}
+	s.CreateCheck(check)
+
+	// Create probes in different regions
+	usProbe := &Probe{Name: "US Probe", Region: "us-east", APIKey: "us-key", Status: "active"}
+	euProbe := &Probe{Name: "EU Probe", Region: "eu-west", APIKey: "eu-key", Status: "active"}
+	apacProbe := &Probe{Name: "APAC Probe", Region: "apac", APIKey: "apac-key", Status: "active"}
+	s.CreateProbe(usProbe)
+	s.CreateProbe(euProbe)
+	s.CreateProbe(apacProbe)
+
+	// Save results for each probe
+	s.SaveProbeResult(&ProbeResult{CheckID: check.ID, ProbeID: usProbe.ID, Status: "up", CheckedAt: time.Now()})
+	s.SaveProbeResult(&ProbeResult{CheckID: check.ID, ProbeID: euProbe.ID, Status: "down", CheckedAt: time.Now()})
+	s.SaveProbeResult(&ProbeResult{CheckID: check.ID, ProbeID: apacProbe.ID, Status: "up", CheckedAt: time.Now()})
+
+	// Get latest by region
+	results, err := s.GetLatestProbeResultsByRegion(check.ID)
+	if err != nil {
+		t.Fatalf("failed to get latest probe results by region: %v", err)
+	}
+
+	if len(results) != 3 {
+		t.Errorf("expected 3 regions, got %d", len(results))
+	}
+
+	if results["us-east"].Status != "up" {
+		t.Errorf("expected us-east status up, got %s", results["us-east"].Status)
+	}
+	if results["eu-west"].Status != "down" {
+		t.Errorf("expected eu-west status down, got %s", results["eu-west"].Status)
+	}
+	if results["apac"].Status != "up" {
+		t.Errorf("expected apac status up, got %s", results["apac"].Status)
+	}
+}
+
+func TestCountFailingProbeRegions(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{Name: "Failing Check", URL: "https://failing.com", IntervalSecs: 60, TimeoutSecs: 10, ExpectedStatus: 200, Enabled: true}
+	s.CreateCheck(check)
+
+	// Create probes in different regions
+	usProbe := &Probe{Name: "US Probe", Region: "us-east", APIKey: "us-fail-key", Status: "active"}
+	euProbe := &Probe{Name: "EU Probe", Region: "eu-west", APIKey: "eu-fail-key", Status: "active"}
+	apacProbe := &Probe{Name: "APAC Probe", Region: "apac", APIKey: "apac-fail-key", Status: "active"}
+	s.CreateProbe(usProbe)
+	s.CreateProbe(euProbe)
+	s.CreateProbe(apacProbe)
+
+	// Save results - 2 regions failing
+	s.SaveProbeResult(&ProbeResult{CheckID: check.ID, ProbeID: usProbe.ID, Status: "down", CheckedAt: time.Now()})
+	s.SaveProbeResult(&ProbeResult{CheckID: check.ID, ProbeID: euProbe.ID, Status: "down", CheckedAt: time.Now()})
+	s.SaveProbeResult(&ProbeResult{CheckID: check.ID, ProbeID: apacProbe.ID, Status: "up", CheckedAt: time.Now()})
+
+	count, err := s.CountFailingProbeRegions(check.ID)
+	if err != nil {
+		t.Fatalf("failed to count failing probe regions: %v", err)
+	}
+
+	if count != 2 {
+		t.Errorf("expected 2 failing regions, got %d", count)
+	}
+}
+
+func TestGetLatestProbeResultsByRegionNoResults(t *testing.T) {
+	s := setupTestDB(t)
+
+	check := &Check{Name: "No Results Check", URL: "https://noresults.com", IntervalSecs: 60, TimeoutSecs: 10, ExpectedStatus: 200, Enabled: true}
+	s.CreateCheck(check)
+
+	results, err := s.GetLatestProbeResultsByRegion(check.ID)
+	if err != nil {
+		t.Fatalf("failed to get latest probe results by region: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Errorf("expected 0 regions for check with no results, got %d", len(results))
+	}
+}
+
+// Helper functions for creating sql.Null* types in tests
+
+func newNullString(s string) sql.NullString {
+	return sql.NullString{String: s, Valid: true}
+}
+
+func newNullInt64(i int64) sql.NullInt64 {
+	return sql.NullInt64{Int64: i, Valid: true}
+}
+
+func newNullFloat64(f float64) sql.NullFloat64 {
+	return sql.NullFloat64{Float64: f, Valid: true}
 }

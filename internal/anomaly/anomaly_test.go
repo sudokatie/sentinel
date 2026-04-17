@@ -70,6 +70,31 @@ func (m *MockStorage) AggregateResults(olderThan time.Time) error               
 func (m *MockStorage) CleanupOldAggregates(olderThan time.Time) error                   { return nil }
 func (m *MockStorage) Close() error                                                     { return nil }
 
+// Probe methods
+func (m *MockStorage) CreateProbe(probe *storage.Probe) error                           { return nil }
+func (m *MockStorage) GetProbe(id int64) (*storage.Probe, error)                        { return nil, nil }
+func (m *MockStorage) GetProbeByAPIKey(apiKey string) (*storage.Probe, error)           { return nil, nil }
+func (m *MockStorage) ListProbes() ([]*storage.Probe, error)                            { return nil, nil }
+func (m *MockStorage) ListActiveProbes() ([]*storage.Probe, error)                      { return nil, nil }
+func (m *MockStorage) ListProbesByRegion(region string) ([]*storage.Probe, error)       { return nil, nil }
+func (m *MockStorage) UpdateProbeHeartbeat(id int64) error                              { return nil }
+func (m *MockStorage) UpdateProbeStatus(id int64, status string) error                  { return nil }
+func (m *MockStorage) DeleteProbe(id int64) error                                       { return nil }
+func (m *MockStorage) CleanupStaleProbes() (int, error)                                 { return 0, nil }
+
+// Probe Result methods
+func (m *MockStorage) SaveProbeResult(result *storage.ProbeResult) error                { return nil }
+func (m *MockStorage) GetProbeResults(checkID int64, limit int, offset int) ([]*storage.ProbeResult, error) {
+	return nil, nil
+}
+func (m *MockStorage) GetProbeResultsByProbe(probeID int64, limit int) ([]*storage.ProbeResult, error) {
+	return nil, nil
+}
+func (m *MockStorage) GetLatestProbeResultsByRegion(checkID int64) (map[string]*storage.ProbeResult, error) {
+	return nil, nil
+}
+func (m *MockStorage) CountFailingProbeRegions(checkID int64) (int, error)              { return 0, nil }
+
 func makeResult(status string, responseMs int) *storage.CheckResult {
 	return &storage.CheckResult{
 		Status:         status,

@@ -112,6 +112,33 @@ func (s *SQLiteStorage) Migrate() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_hourly_aggregates_check_id ON hourly_aggregates(check_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_hourly_aggregates_hour ON hourly_aggregates(hour)`,
+		`CREATE TABLE IF NOT EXISTS probes (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			region TEXT NOT NULL,
+			city TEXT,
+			country TEXT,
+			latitude REAL,
+			longitude REAL,
+			api_key TEXT UNIQUE NOT NULL,
+			status TEXT DEFAULT 'active',
+			last_heartbeat DATETIME,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS probe_results (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			check_id INTEGER NOT NULL,
+			probe_id INTEGER NOT NULL,
+			status TEXT NOT NULL,
+			response_time_ms INTEGER,
+			status_code INTEGER,
+			error TEXT,
+			checked_at DATETIME NOT NULL,
+			FOREIGN KEY (check_id) REFERENCES checks(id) ON DELETE CASCADE,
+			FOREIGN KEY (probe_id) REFERENCES probes(id) ON DELETE CASCADE
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_probe_results_check_id ON probe_results(check_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_probe_results_probe_id ON probe_results(probe_id)`,
 	}
 
 	for _, m := range migrations {
@@ -1006,4 +1033,295 @@ func (s *SQLiteStorage) CleanupOldAggregates(olderThan time.Time) error {
 		return fmt.Errorf("cleaning up old aggregates: %w", err)
 	}
 	return nil
+}
+
+// Probes
+
+func (s *SQLiteStorage) CreateProbe(probe *Probe) error {
+	result, err := s.db.Exec(`
+		INSERT INTO probes (name, region, city, country, latitude, longitude, api_key, status, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, probe.Name, probe.Region, probe.City, probe.Country, probe.Latitude, probe.Longitude, probe.APIKey, probe.Status, time.Now())
+	if err != nil {
+		return fmt.Errorf("inserting probe: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("getting last insert id: %w", err)
+	}
+
+	probe.ID = id
+	probe.CreatedAt = sql.NullTime{Time: time.Now(), Valid: true}
+	return nil
+}
+
+func (s *SQLiteStorage) GetProbe(id int64) (*Probe, error) {
+	row := s.db.QueryRow(`
+		SELECT id, name, region, city, country, latitude, longitude, api_key, status, last_heartbeat, created_at
+		FROM probes WHERE id = ?
+	`, id)
+
+	return s.scanProbe(row)
+}
+
+func (s *SQLiteStorage) GetProbeByAPIKey(apiKey string) (*Probe, error) {
+	row := s.db.QueryRow(`
+		SELECT id, name, region, city, country, latitude, longitude, api_key, status, last_heartbeat, created_at
+		FROM probes WHERE api_key = ?
+	`, apiKey)
+
+	return s.scanProbe(row)
+}
+
+func (s *SQLiteStorage) ListProbes() ([]*Probe, error) {
+	rows, err := s.db.Query(`
+		SELECT id, name, region, city, country, latitude, longitude, api_key, status, last_heartbeat, created_at
+		FROM probes ORDER BY name
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("querying probes: %w", err)
+	}
+	defer rows.Close()
+
+	return s.scanProbes(rows)
+}
+
+func (s *SQLiteStorage) ListActiveProbes() ([]*Probe, error) {
+	rows, err := s.db.Query(`
+		SELECT id, name, region, city, country, latitude, longitude, api_key, status, last_heartbeat, created_at
+		FROM probes WHERE status = 'active' ORDER BY name
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("querying active probes: %w", err)
+	}
+	defer rows.Close()
+
+	return s.scanProbes(rows)
+}
+
+func (s *SQLiteStorage) ListProbesByRegion(region string) ([]*Probe, error) {
+	rows, err := s.db.Query(`
+		SELECT id, name, region, city, country, latitude, longitude, api_key, status, last_heartbeat, created_at
+		FROM probes WHERE region = ? ORDER BY name
+	`, region)
+	if err != nil {
+		return nil, fmt.Errorf("querying probes by region: %w", err)
+	}
+	defer rows.Close()
+
+	return s.scanProbes(rows)
+}
+
+func (s *SQLiteStorage) UpdateProbeHeartbeat(id int64) error {
+	_, err := s.db.Exec(`UPDATE probes SET last_heartbeat = ? WHERE id = ?`, time.Now(), id)
+	if err != nil {
+		return fmt.Errorf("updating probe heartbeat: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStorage) UpdateProbeStatus(id int64, status string) error {
+	_, err := s.db.Exec(`UPDATE probes SET status = ? WHERE id = ?`, status, id)
+	if err != nil {
+		return fmt.Errorf("updating probe status: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStorage) DeleteProbe(id int64) error {
+	_, err := s.db.Exec("DELETE FROM probes WHERE id = ?", id)
+	if err != nil {
+		return fmt.Errorf("deleting probe: %w", err)
+	}
+	return nil
+}
+
+func (s *SQLiteStorage) CleanupStaleProbes() (int, error) {
+	// Mark probes as inactive if no heartbeat in the last 5 minutes
+	staleThreshold := time.Now().Add(-5 * time.Minute)
+	result, err := s.db.Exec(`
+		UPDATE probes SET status = 'inactive'
+		WHERE status = 'active' AND (last_heartbeat IS NULL OR last_heartbeat < ?)
+	`, staleThreshold)
+	if err != nil {
+		return 0, fmt.Errorf("cleaning up stale probes: %w", err)
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("getting rows affected: %w", err)
+	}
+
+	return int(count), nil
+}
+
+func (s *SQLiteStorage) scanProbe(row *sql.Row) (*Probe, error) {
+	var probe Probe
+
+	err := row.Scan(
+		&probe.ID, &probe.Name, &probe.Region, &probe.City, &probe.Country,
+		&probe.Latitude, &probe.Longitude, &probe.APIKey, &probe.Status,
+		&probe.LastHeartbeat, &probe.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scanning probe: %w", err)
+	}
+
+	return &probe, nil
+}
+
+func (s *SQLiteStorage) scanProbes(rows *sql.Rows) ([]*Probe, error) {
+	var probes []*Probe
+
+	for rows.Next() {
+		var probe Probe
+
+		err := rows.Scan(
+			&probe.ID, &probe.Name, &probe.Region, &probe.City, &probe.Country,
+			&probe.Latitude, &probe.Longitude, &probe.APIKey, &probe.Status,
+			&probe.LastHeartbeat, &probe.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scanning probe: %w", err)
+		}
+
+		probes = append(probes, &probe)
+	}
+
+	return probes, nil
+}
+
+// Probe Results
+
+func (s *SQLiteStorage) SaveProbeResult(result *ProbeResult) error {
+	res, err := s.db.Exec(`
+		INSERT INTO probe_results (check_id, probe_id, status, response_time_ms, status_code, error, checked_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, result.CheckID, result.ProbeID, result.Status, result.ResponseTimeMs, result.StatusCode, result.Error, result.CheckedAt)
+	if err != nil {
+		return fmt.Errorf("inserting probe result: %w", err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("getting last insert id: %w", err)
+	}
+
+	result.ID = id
+	return nil
+}
+
+func (s *SQLiteStorage) GetProbeResults(checkID int64, limit int, offset int) ([]*ProbeResult, error) {
+	rows, err := s.db.Query(`
+		SELECT id, check_id, probe_id, status, response_time_ms, status_code, error, checked_at
+		FROM probe_results WHERE check_id = ? ORDER BY checked_at DESC LIMIT ? OFFSET ?
+	`, checkID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("querying probe results: %w", err)
+	}
+	defer rows.Close()
+
+	return s.scanProbeResults(rows)
+}
+
+func (s *SQLiteStorage) GetProbeResultsByProbe(probeID int64, limit int) ([]*ProbeResult, error) {
+	rows, err := s.db.Query(`
+		SELECT id, check_id, probe_id, status, response_time_ms, status_code, error, checked_at
+		FROM probe_results WHERE probe_id = ? ORDER BY checked_at DESC LIMIT ?
+	`, probeID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("querying probe results by probe: %w", err)
+	}
+	defer rows.Close()
+
+	return s.scanProbeResults(rows)
+}
+
+func (s *SQLiteStorage) GetLatestProbeResultsByRegion(checkID int64) (map[string]*ProbeResult, error) {
+	// Get distinct regions for probes that have results for this check
+	rows, err := s.db.Query(`
+		SELECT DISTINCT p.region
+		FROM probe_results pr
+		JOIN probes p ON p.id = pr.probe_id
+		WHERE pr.check_id = ?
+	`, checkID)
+	if err != nil {
+		return nil, fmt.Errorf("querying probe regions: %w", err)
+	}
+	defer rows.Close()
+
+	var regions []string
+	for rows.Next() {
+		var region string
+		if err := rows.Scan(&region); err != nil {
+			return nil, fmt.Errorf("scanning region: %w", err)
+		}
+		regions = append(regions, region)
+	}
+
+	// Get latest result for each region
+	results := make(map[string]*ProbeResult)
+	for _, region := range regions {
+		row := s.db.QueryRow(`
+			SELECT pr.id, pr.check_id, pr.probe_id, pr.status, pr.response_time_ms, pr.status_code, pr.error, pr.checked_at
+			FROM probe_results pr
+			JOIN probes p ON p.id = pr.probe_id
+			WHERE pr.check_id = ? AND p.region = ?
+			ORDER BY pr.checked_at DESC LIMIT 1
+		`, checkID, region)
+
+		var result ProbeResult
+		err := row.Scan(
+			&result.ID, &result.CheckID, &result.ProbeID, &result.Status,
+			&result.ResponseTimeMs, &result.StatusCode, &result.Error, &result.CheckedAt,
+		)
+		if err != nil && err != sql.ErrNoRows {
+			return nil, fmt.Errorf("scanning probe result for region %s: %w", region, err)
+		}
+
+		if err == nil {
+			results[region] = &result
+		}
+	}
+
+	return results, nil
+}
+
+func (s *SQLiteStorage) CountFailingProbeRegions(checkID int64) (int, error) {
+	regionResults, err := s.GetLatestProbeResultsByRegion(checkID)
+	if err != nil {
+		return 0, err
+	}
+
+	failingCount := 0
+	for _, result := range regionResults {
+		if result.Status == "down" {
+			failingCount++
+		}
+	}
+	return failingCount, nil
+}
+
+func (s *SQLiteStorage) scanProbeResults(rows *sql.Rows) ([]*ProbeResult, error) {
+	var results []*ProbeResult
+
+	for rows.Next() {
+		var result ProbeResult
+
+		err := rows.Scan(
+			&result.ID, &result.CheckID, &result.ProbeID, &result.Status,
+			&result.ResponseTimeMs, &result.StatusCode, &result.Error, &result.CheckedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scanning probe result: %w", err)
+		}
+
+		results = append(results, &result)
+	}
+
+	return results, nil
 }
