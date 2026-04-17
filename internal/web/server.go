@@ -15,6 +15,7 @@ import (
 
 	"github.com/katieblackabee/sentinel/internal/checker"
 	"github.com/katieblackabee/sentinel/internal/config"
+	"github.com/katieblackabee/sentinel/internal/probe"
 	"github.com/katieblackabee/sentinel/internal/storage"
 )
 
@@ -25,12 +26,13 @@ var templateFS embed.FS
 var staticFS embed.FS
 
 type Server struct {
-	echo       *echo.Echo
-	config     *config.ServerConfig
-	fullConfig *config.Config
-	storage    storage.Storage
-	scheduler  *checker.Scheduler
-	auth       *AuthManager
+	echo         *echo.Echo
+	config       *config.ServerConfig
+	fullConfig   *config.Config
+	storage      storage.Storage
+	scheduler    *checker.Scheduler
+	auth         *AuthManager
+	probeHandler *ProbeHandler
 }
 
 type Template struct {
@@ -46,7 +48,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
-func NewServer(cfg *config.ServerConfig, fullCfg *config.Config, store storage.Storage, sched *checker.Scheduler, users map[string]string) *Server {
+func NewServer(cfg *config.ServerConfig, fullCfg *config.Config, store storage.Storage, sched *checker.Scheduler, users map[string]string, registry *probe.ProbeRegistry, coordinator *probe.Coordinator) *Server {
 	e := echo.New()
 	e.HideBanner = true
 
@@ -72,13 +74,20 @@ func NewServer(cfg *config.ServerConfig, fullCfg *config.Config, store storage.S
 		auth = NewAuthManager(users, basePath)
 	}
 
+	// Probe handler
+	var probeHandler *ProbeHandler
+	if registry != nil && coordinator != nil {
+		probeHandler = NewProbeHandler(store, registry, coordinator)
+	}
+
 	server := &Server{
-		echo:       e,
-		config:     cfg,
-		fullConfig: fullCfg,
-		storage:    store,
-		scheduler:  sched,
-		auth:       auth,
+		echo:         e,
+		config:       cfg,
+		fullConfig:   fullCfg,
+		storage:      store,
+		scheduler:    sched,
+		auth:         auth,
+		probeHandler: probeHandler,
 	}
 
 	// Register routes
@@ -127,6 +136,16 @@ func (s *Server) registerRoutes() {
 		api.PUT("/incidents/:id/title", s.HandleUpdateIncidentTitle)
 		api.POST("/incidents/:id/notes", s.HandleAddIncidentNote)
 		api.DELETE("/incidents/:id/notes/:noteId", s.HandleDeleteIncidentNote)
+
+		// Probe routes
+		if s.probeHandler != nil {
+			api.POST("/probes/register", s.probeHandler.RegisterProbe)
+			api.DELETE("/probes/:id", s.probeHandler.DeregisterProbe)
+			api.POST("/probes/:id/heartbeat", s.probeHandler.ProbeHeartbeat)
+			api.GET("/probes", s.probeHandler.ListProbes)
+			api.POST("/probes/:id/results", s.probeHandler.SubmitProbeResult)
+			api.GET("/checks/:id/probe-results", s.probeHandler.GetProbeResults)
+		}
 	} else {
 		// No auth - public access
 		s.echo.GET("/", s.HandleDashboard)
@@ -153,6 +172,16 @@ func (s *Server) registerRoutes() {
 		api.PUT("/incidents/:id/title", s.HandleUpdateIncidentTitle)
 		api.POST("/incidents/:id/notes", s.HandleAddIncidentNote)
 		api.DELETE("/incidents/:id/notes/:noteId", s.HandleDeleteIncidentNote)
+
+		// Probe routes
+		if s.probeHandler != nil {
+			api.POST("/probes/register", s.probeHandler.RegisterProbe)
+			api.DELETE("/probes/:id", s.probeHandler.DeregisterProbe)
+			api.POST("/probes/:id/heartbeat", s.probeHandler.ProbeHeartbeat)
+			api.GET("/probes", s.probeHandler.ListProbes)
+			api.POST("/probes/:id/results", s.probeHandler.SubmitProbeResult)
+			api.GET("/checks/:id/probe-results", s.probeHandler.GetProbeResults)
+		}
 	}
 }
 

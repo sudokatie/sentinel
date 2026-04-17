@@ -15,6 +15,7 @@ type Check struct {
 	Enabled        bool      `json:"enabled"`
 	Tags           []string  `json:"tags"`
 	Regions        []string  `json:"regions,omitempty"` // Region codes for multi-region checks
+	MinProbes      int       `json:"min_probes"`        // Minimum probes required (0 = single check)
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 
@@ -172,6 +173,7 @@ type CreateCheckInput struct {
 	Enabled        *bool    `json:"enabled,omitempty"`
 	Tags           []string `json:"tags,omitempty"`
 	Regions        []string `json:"regions,omitempty"`
+	MinProbes      int      `json:"min_probes,omitempty"`
 }
 
 func (i *CreateCheckInput) ToCheck() *Check {
@@ -204,6 +206,7 @@ func (i *CreateCheckInput) ToCheck() *Check {
 		Enabled:        enabled,
 		Tags:           i.Tags,
 		Regions:        i.Regions,
+		MinProbes:      i.MinProbes,
 	}
 }
 

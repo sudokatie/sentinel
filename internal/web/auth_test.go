@@ -235,7 +235,7 @@ func setupTestServerWithAuth(t *testing.T) (*Server, storage.Storage) {
 		},
 	}
 
-	server := NewServer(cfg, nil, store, nil, cfg.Users)
+	server := NewServer(cfg, nil, store, nil, cfg.Users, nil, nil)
 
 	t.Cleanup(func() {
 		store.Close()

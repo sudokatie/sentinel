@@ -151,7 +151,7 @@ func serve() {
 	}
 
 	// Initialize web server
-	server := web.NewServer(&cfg.Server, cfg, store, sched, cfg.Server.Users)
+	server := web.NewServer(&cfg.Server, cfg, store, sched, cfg.Server.Users, nil, nil)
 
 	// Handle shutdown
 	quit := make(chan os.Signal, 1)

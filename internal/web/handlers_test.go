@@ -49,7 +49,7 @@ func setupTestServerWithTemplates(t *testing.T) (*Server, storage.Storage) {
 	}
 
 	// Create server with full config for handler tests
-	server := NewServer(cfg, fullCfg, store, nil, nil)
+	server := NewServer(cfg, fullCfg, store, nil, nil, nil, nil)
 
 	t.Cleanup(func() {
 		store.Close()
@@ -524,7 +524,7 @@ func TestBasePath(t *testing.T) {
 		BaseURL: "/sentinel",
 	}
 
-	server := NewServer(cfg, nil, store, nil, nil)
+	server := NewServer(cfg, nil, store, nil, nil, nil, nil)
 
 	if server.BasePath() != "/sentinel" {
 		t.Errorf("expected base path /sentinel, got %s", server.BasePath())

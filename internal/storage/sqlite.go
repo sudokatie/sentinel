@@ -159,6 +159,8 @@ func (s *SQLiteStorage) Migrate() error {
 		// Multi-region support
 		`ALTER TABLE check_results ADD COLUMN region TEXT DEFAULT ''`,
 		`ALTER TABLE checks ADD COLUMN regions TEXT DEFAULT ''`,
+		// Minimum probes for distributed checks
+		`ALTER TABLE checks ADD COLUMN min_probes INTEGER NOT NULL DEFAULT 0`,
 	}
 	for _, m := range optionalMigrations {
 		s.db.Exec(m) // Ignore errors (column already exists)
@@ -185,9 +187,9 @@ func (s *SQLiteStorage) CreateCheck(check *Check) error {
 	}
 
 	result, err := s.db.Exec(`
-		INSERT INTO checks (name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, check.Name, check.URL, check.IntervalSecs, check.TimeoutSecs, check.ExpectedStatus, check.Enabled, string(tagsJSON), string(regionsJSON), time.Now(), time.Now())
+		INSERT INTO checks (name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, min_probes, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, check.Name, check.URL, check.IntervalSecs, check.TimeoutSecs, check.ExpectedStatus, check.Enabled, string(tagsJSON), string(regionsJSON), check.MinProbes, time.Now(), time.Now())
 	if err != nil {
 		return fmt.Errorf("inserting check: %w", err)
 	}
@@ -205,7 +207,7 @@ func (s *SQLiteStorage) CreateCheck(check *Check) error {
 
 func (s *SQLiteStorage) GetCheck(id int64) (*Check, error) {
 	row := s.db.QueryRow(`
-		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, created_at, updated_at
+		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, COALESCE(min_probes, 0), created_at, updated_at
 		FROM checks WHERE id = ?
 	`, id)
 
@@ -214,7 +216,7 @@ func (s *SQLiteStorage) GetCheck(id int64) (*Check, error) {
 
 func (s *SQLiteStorage) GetCheckByURL(url string) (*Check, error) {
 	row := s.db.QueryRow(`
-		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, created_at, updated_at
+		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, COALESCE(min_probes, 0), created_at, updated_at
 		FROM checks WHERE url = ?
 	`, url)
 
@@ -223,7 +225,7 @@ func (s *SQLiteStorage) GetCheckByURL(url string) (*Check, error) {
 
 func (s *SQLiteStorage) ListChecks() ([]*Check, error) {
 	rows, err := s.db.Query(`
-		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, created_at, updated_at
+		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, COALESCE(min_probes, 0), created_at, updated_at
 		FROM checks ORDER BY name
 	`)
 	if err != nil {
@@ -236,7 +238,7 @@ func (s *SQLiteStorage) ListChecks() ([]*Check, error) {
 
 func (s *SQLiteStorage) ListEnabledChecks() ([]*Check, error) {
 	rows, err := s.db.Query(`
-		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, created_at, updated_at
+		SELECT id, name, url, interval_seconds, timeout_seconds, expected_status, enabled, tags, regions, COALESCE(min_probes, 0), created_at, updated_at
 		FROM checks WHERE enabled = 1 ORDER BY name
 	`)
 	if err != nil {
@@ -278,9 +280,9 @@ func (s *SQLiteStorage) UpdateCheck(check *Check) error {
 	}
 
 	_, err = s.db.Exec(`
-		UPDATE checks SET name = ?, url = ?, interval_seconds = ?, timeout_seconds = ?, expected_status = ?, enabled = ?, tags = ?, regions = ?, updated_at = ?
+		UPDATE checks SET name = ?, url = ?, interval_seconds = ?, timeout_seconds = ?, expected_status = ?, enabled = ?, tags = ?, regions = ?, min_probes = ?, updated_at = ?
 		WHERE id = ?
-	`, check.Name, check.URL, check.IntervalSecs, check.TimeoutSecs, check.ExpectedStatus, check.Enabled, string(tagsJSON), string(regionsJSON), time.Now(), check.ID)
+	`, check.Name, check.URL, check.IntervalSecs, check.TimeoutSecs, check.ExpectedStatus, check.Enabled, string(tagsJSON), string(regionsJSON), check.MinProbes, time.Now(), check.ID)
 	if err != nil {
 		return fmt.Errorf("updating check: %w", err)
 	}
@@ -304,7 +306,7 @@ func (s *SQLiteStorage) scanCheck(row *sql.Row) (*Check, error) {
 
 	err := row.Scan(
 		&check.ID, &check.Name, &check.URL, &check.IntervalSecs, &check.TimeoutSecs,
-		&check.ExpectedStatus, &check.Enabled, &tagsJSON, &regionsJSON, &check.CreatedAt, &check.UpdatedAt,
+		&check.ExpectedStatus, &check.Enabled, &tagsJSON, &regionsJSON, &check.MinProbes, &check.CreatedAt, &check.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -339,7 +341,7 @@ func (s *SQLiteStorage) scanChecks(rows *sql.Rows) ([]*Check, error) {
 
 		err := rows.Scan(
 			&check.ID, &check.Name, &check.URL, &check.IntervalSecs, &check.TimeoutSecs,
-			&check.ExpectedStatus, &check.Enabled, &tagsJSON, &regionsJSON, &check.CreatedAt, &check.UpdatedAt,
+			&check.ExpectedStatus, &check.Enabled, &tagsJSON, &regionsJSON, &check.MinProbes, &check.CreatedAt, &check.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning check: %w", err)
