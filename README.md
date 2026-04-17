@@ -23,6 +23,10 @@ Sentinel is a single binary that checks your endpoints, tracks response times, s
 - REST API for automation (because clicking buttons is for amateurs)
 - Hourly data aggregation (keeps 90 days of history without filling your disk)
 - Synthetic monitoring (run Playwright scripts as health checks)
+- Multi-probe locations (distributed agents, regional outage detection)
+- Anomaly detection (latency spike alerts, trend analysis)
+- Incident management with status tracking and timeline notes
+- Maintenance windows (suppress alerts during planned downtime)
 
 ## Quick Start
 
@@ -264,6 +268,70 @@ Notes are timestamped and optionally attributed. Your future self will thank you
 
 **Titles**: Give incidents meaningful names. "API Outage" beats "Incident #47".
 
+## Multi-Probe Locations
+
+Check from multiple geographic locations. Catch regional outages that single-location monitoring misses.
+
+### Probe Agent
+
+Deploy the probe agent binary on servers in different regions:
+
+```bash
+# Build the probe agent
+go build -o probe ./cmd/probe/
+
+# Run a probe agent
+./probe -server http://sentinel.example.com:3000 \
+        -key probe-secret-key \
+        -name "US-East-1" \
+        -region us-east \
+        -city "Virginia" \
+        -country "US" \
+        -lat 37.5 -lon -77.4
+```
+
+The probe agent:
+- Registers with the Sentinel server on startup
+- Sends heartbeats every 30 seconds
+- Pulls assigned checks and executes them locally
+- Reports results back to the coordinator
+- Auto-deregisters on graceful shutdown
+
+### Coordinator
+
+The server-side coordinator:
+- Assigns checks to probes based on `min_probes` configuration
+- Aggregates results from multiple probes
+- Detects regional outages (some probes fail, others succeed)
+- Detects global outages (all probes fail)
+- Compares latency across regions
+
+### Outage Detection
+
+- **Regional outage**: Check fails from >=50% of probes in a region but succeeds elsewhere
+- **Global outage**: Check fails from all probes
+- Alerts include affected regions in the notification payload
+
+### API Endpoints
+
+```bash
+# Register a probe
+curl -X POST http://localhost:3000/api/probes/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"US-East-1","region":"us-east","api_key":"probe-key"}'
+
+# List active probes
+curl http://localhost:3000/api/probes
+
+# Submit a check result from a probe
+curl -X POST http://localhost:3000/api/probes/1/results \
+  -H "Content-Type: application/json" \
+  -d '{"check_id":1,"status":"up","response_time_ms":45}'
+
+# Get probe results for a check
+curl http://localhost:3000/api/checks/1/probe-results
+```
+
 ## Docker
 
 ```bash
@@ -294,11 +362,14 @@ make run
 ```
 sentinel/
 ├── cmd/sentinel/       # CLI entry point
+├── cmd/probe/          # Standalone probe agent binary
 ├── internal/
 │   ├── config/         # Configuration loading
 │   ├── storage/        # SQLite storage layer
-│   ├── checker/        # HTTP checks and scheduling
+│   ├── checker/        # HTTP checks, scheduling, synthetic
 │   ├── alerter/        # Alert management and email
+│   ├── anomaly/        # Latency anomaly detection
+│   ├── probe/          # Multi-probe registry, coordinator, geo utilities
 │   └── web/            # HTTP server and UI
 └── static/             # CSS and JavaScript
 ```
